@@ -1,0 +1,24 @@
+build-image:
+  services:
+    - name: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/docker:24.0.2-dind
+      alias: docker
+      variables:
+        DOCKER_TLS_CERTDIR: ''
+  stage: build
+  tags: [docker-executor]
+  image: ${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/docker:24.0.2
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  variables:
+    NO_PROXY: "docker"
+    DOCKER_HOST: "tcp://docker:2375"
+    GIT_LFS_SKIP_SMUDGE: "1"
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
+    - ls -l projects/*/Dockerfile
+    - for p in projects/*/Dockerfile; do
+        name=$(basename $(dirname $p));
+        echo $name;
+        docker build --tag $CI_REGISTRY_IMAGE:$name -f $p $(dirname $p);
+        docker push $CI_REGISTRY_IMAGE:$name;
+      done

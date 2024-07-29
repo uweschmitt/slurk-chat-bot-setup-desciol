@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "setup_client"
+version = "0.1.0"
+description = ""
+authors = ["Uwe Schmitt <uwe.schmitt@id.ethz.ch>"]
+license = ""
+
+packages = [
+    {include = "slurk_setup_descil/slurk_api", from = "../../components"},
+    {include = "slurk_setup_descil/setup_client", from = "../../bases"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+gunicorn = "^22"
+uvicorn = "^0.30"
+aiohttp = "^3.9.5"
+fastapi = "^0.111.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
