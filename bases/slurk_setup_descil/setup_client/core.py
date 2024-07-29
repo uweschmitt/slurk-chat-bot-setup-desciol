@@ -1,7 +1,6 @@
 import os
 import traceback
 import uuid
-from contextlib import asynccontextmanager
 from typing import List
 
 import aiohttp
@@ -13,6 +12,7 @@ from slurk_setup_descil.slurk_api import (
     create_room,
     create_room_token,
     create_task,
+    create_user,
     get_api_token,
     set_permissions,
 )
@@ -101,7 +101,7 @@ async def setup_and_register_concierge(
 ):
     permissions_id = await set_permissions(api_token, CONCIERGE_PERMISSIONS)
     concierge_token = await create_room_token(
-        api_token, permissions, waiting_room_id, None, None
+        api_token, permissions_id, waiting_room_id, None, None
     )
 
     concierge_user = await create_user(api_token, name, concierge_token)

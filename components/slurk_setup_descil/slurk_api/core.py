@@ -20,9 +20,8 @@ async def post(api_token, endpoint, json):
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
-    print("POST", a, kw, flush=True)
     async with aiohttp.ClientSession() as session:
-        async with session.post(*a, **kw) as resp:
+        async with session.post(endpoint, headers=headers, json=json) as resp:
             yield resp
 
 
@@ -37,7 +36,7 @@ async def delete(*a, **kw):
 async def set_permissions(api_token, permissions):
     async with post(api_token, "/slurk/api/permissions", permissions) as r:
         r.raise_for_status()
-        permissions_id = (await r.json())["id"]
+        return (await r.json())["id"]
 
 
 async def create_user(api_token, name, token_id):
@@ -45,7 +44,7 @@ async def create_user(api_token, name, token_id):
         api_token, "/slurk/api/users", dict(name=name, token_id=token_id)
     ) as r:
         r.raise_for_status()
-        permissions_id = (await r.json())["id"]
+        return (await r.json())["id"]
 
 
 async def create_room_token(api_token, permissions_id, room_id, task_id, n_users):

@@ -1,0 +1,26 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+    -   id: trailing-whitespace
+        exclude: ^tests/_regtest_outputs/
+    -   id: end-of-file-fixer
+        exclude: ^tests/_regtest_outputs/
+    -   id: check-yaml
+    -   id: check-added-large-files
+    -   id: check-merge-conflict
+
+- repo: https://github.com/pycqa/isort
+  rev: 5.13.2
+  hooks:
+      - id: isort
+        name: isort (python)
+        args: ["--profile", "black", "--filter-files"]
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.5.5
+  hooks:
+    - id: ruff
+      args: [--exit-non-zero-on-fix, --line-length=88, "--ignore=E731,E741"]
+    - id: ruff-format
