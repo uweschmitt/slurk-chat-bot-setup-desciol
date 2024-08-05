@@ -21,11 +21,15 @@ build-image:
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_JOB_TOKEN $CI_REGISTRY
     - ls -l projects/*/Dockerfile
-    - for p in projects/*/Dockerfile; do
-        cd $(dirname $(realpath $p));
-        name=$(basename $(dirname $p));
-        echo $name;
-        poetry build-project;
-        docker build --tag $CI_REGISTRY_IMAGE:$name .;
-        docker push $CI_REGISTRY_IMAGE:$name;
+    - dockerfiles=$(ls projects/*/Dockerfile)
+    - for df in ${dockerfiles};
+      do
+        (
+           cd $(dirname $df);
+           project_name=$(basename $(dirname $df));
+           echo $project_name;
+           poetry build-project;
+           docker build --tag $CI_REGISTRY_IMAGE:${project_name} .;
+           docker push $CI_REGISTRY_IMAGE:${project_name};
+        );
       done
