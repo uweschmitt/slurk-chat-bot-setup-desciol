@@ -3,9 +3,11 @@ import logging
 import time
 
 import socketio
-from slurk_setup_descil.slurk_api import async_tasks, delete, get, post
+from slurk_setup_descil.slurk_api import delete, get, post
 
 LOG = logging.getLogger(__name__)
+
+_async_tasks = dict()
 
 
 class ConciergeBot:
@@ -87,13 +89,19 @@ class ConciergeBot:
             callback=self.message_callback,
         )
 
+        print(self.tasks, flush=True)
         for users_in_task in self.tasks.values():
+            print(users_in_task, flush=True)
             for user_id, task_id in users_in_task.items():
-                # user_token = await self.fetch_user_token(user_id)
+                print("forward", user_id, task_id, flush=True)
                 room_id = await self.create_forward_room()
+                print(room_id, flush=True)
                 etag = await self.get_user(user_id)
+                print(etag, flush=True)
                 await self.remove_user_from_room(user_id, self.waiting_room_id, etag)
+                print("removed user", flush=True)
                 await self.add_user_to_room(user_id, room_id)
+                print("added user to new room", flush=True)
                 await self.sio.emit("room_created", {"room": room_id, "task": task_id})
 
     async def create_forward_room(self):
@@ -243,6 +251,7 @@ class ConciergeBot:
         async with delete(
             self.concierge_token,
             f"{self.uri}/users/{user_id}/rooms/{room_id}",
+            etag=etag,
         ) as response:
             if not response.ok:
                 LOG.error(f"Could not remove user from room: {response.status_code}")
@@ -276,7 +285,7 @@ class ConciergeBot:
         self.number_users_in_room_missing -= 1
         if not self.timeout_manager_active:
             t = asyncio.create_task(self.timeout_manager())
-            async_tasks[id(t)] = t
+            _async_tasks[id(t)] = t
             self.timeout_manager_active = True
 
         if len(self.tasks[task_id]) == task["num_users"]:
@@ -325,7 +334,7 @@ class ConciergeBot:
             )
 
     async def disconnect(self):
-        async_tasks.pop(self, None)
+        _async_tasks.pop(self, None)
         await self.sio.disconnect()
 
     async def user_task_leave(self, user, task):

@@ -15,7 +15,7 @@ SLURK_PORT = os.environ.get("SLURK_PORT", "8088")
 app = web.Application()
 routes = web.RouteTableDef()
 
-async_tasks = dict()
+_async_tasks = dict()
 
 
 @routes.post("/register")
@@ -30,7 +30,7 @@ async def register(request):
         SLURK_PORT,
     )
     task = asyncio.create_task(bot.run())
-    async_tasks[id(bot)] = task
+    _async_tasks[id(bot)] = task
     return web.Response()
 
 

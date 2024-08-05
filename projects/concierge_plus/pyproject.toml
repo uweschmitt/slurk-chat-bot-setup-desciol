@@ -16,6 +16,8 @@ python = "^3.11"
 aiohttp = "^3.9.5"
 socketio = "^0.2.1"
 gunicorn = "^22.0.0"
+python-socketio = {extras = ["asyncio-client"], version = "^5.11.3"}
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

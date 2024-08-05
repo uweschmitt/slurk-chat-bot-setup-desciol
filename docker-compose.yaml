@@ -1,0 +1,66 @@
+version: '3.4'
+
+services:
+  setup_service:
+    build:
+      context: ./projects/setup_client
+    ports:
+    - "8789:81"
+    environment:
+    - "http_proxy="
+    - "https_proxy="
+    - "HTTP_PROXY="
+    - "HTTPS_PROXY="
+    - "CONCIERGE_URL=http://concierge_plus:82"
+    - "SLURK_HOST=http://slurk:80"
+    - "TOKEN_SERVICE_URL=http://slurk-access-token-reader:83/token"
+
+  concierge_plus:
+    build:
+      context: ./projects/concierge_plus/
+    environment:
+    - "http_proxy="
+    - "https_proxy="
+    - "HTTP_PROXY="
+    - "HTTPS_PROXY="
+    - "SLURK_HOST=http://slurk"
+    - "SLURK_PORT=80"
+    - "PYTHONASYNCIODEBUG=1"
+
+  slurk_delete_logs:
+    image: alpine
+    volumes:
+    - logs:/log
+    command: "sh -x -c 'rm -vf /log/slurk.log'"
+
+  slurk:
+    image: slurk
+    entrypoint: /bin/bash
+    command:
+        - -c
+        - >
+          gunicorn
+          --capture-output
+          --error-logfile -
+          --access-logfile -
+          --log-level DEBUG
+          -b :80
+          -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker
+          "slurk:create_app()"
+          |& tee /log/slurk.log
+    volumes:
+    - logs:/log
+    ports:
+    - "8788:80"
+    environment:
+    - "http_proxy="
+    - "https_proxy="
+    - "HTTP_PROXY="
+    - "HTTPS_PROXY="
+    - "FLASK_ENV=development"
+    depends_on:
+      slurk_delete_logs:
+        condition: service_completed_successfully
+
+volumes:
+  logs:
