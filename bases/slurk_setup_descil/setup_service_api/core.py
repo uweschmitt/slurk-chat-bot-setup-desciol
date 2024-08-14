@@ -6,7 +6,7 @@ from typing import List
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from slurk_setup_descil.setup_client import (
+from slurk_setup_descil.setup_service import (
     create_waiting_room_tokens,
     setup_and_register_concierge,
     setup_waiting_room,

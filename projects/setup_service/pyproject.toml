@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "setup_client"
+name = "setup_service"
 version = "0.1.0"
 description = ""
 authors = ["Uwe Schmitt <uwe.schmitt@id.ethz.ch>"]
@@ -7,7 +7,7 @@ license = ""
 
 packages = [
     {include = "slurk_setup_descil/slurk_api", from = "../../components"},
-    {include = "slurk_setup_descil/setup_client_api", from = "../../bases"}
+    {include = "slurk_setup_descil/setup_service_api", from = "../../bases"}
 ]
 
 [tool.poetry.dependencies]

@@ -7,7 +7,7 @@ readme = "README.md"
 
 packages = [
   {include = "slurk_setup_descil/slurk_api", from = "components"},
-  {include = "slurk_setup_descil/setup_client", from = "bases"},
+  {include = "slurk_setup_descil/setup_service", from = "bases"},
 ]
 
 [tool.poetry.dependencies]
