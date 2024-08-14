@@ -3,7 +3,7 @@ version: '3.4'
 services:
   setup_service:
     build:
-      context: ./projects/setup_client
+      context: ./projects/setup_service
     ports:
     - "8789:81"
     environment:
