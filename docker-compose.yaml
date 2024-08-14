@@ -34,7 +34,7 @@ services:
     command: "sh -x -c 'rm -vf /log/slurk.log'"
 
   slurk:
-    image: slurk
+    image: registry.ethz.ch/sis/slurk-descil
     entrypoint: /bin/bash
     command:
         - -c
@@ -57,7 +57,7 @@ services:
     - "https_proxy="
     - "HTTP_PROXY="
     - "HTTPS_PROXY="
-    - "FLASK_ENV=development"
+    - "ACCESS_TOKEN=666"
     depends_on:
       slurk_delete_logs:
         condition: service_completed_successfully
