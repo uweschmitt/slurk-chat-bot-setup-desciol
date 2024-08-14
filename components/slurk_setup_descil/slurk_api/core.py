@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 import aiohttp
@@ -92,4 +93,4 @@ async def create_task(uri, api_token, layout_id, num_users, name):
 
 
 async def get_api_token():
-    return "00000000-0000-0000-0000-000000000000"
+    return os.environ.get("ACCESS_TOKEN", "00000000-0000-0000-0000-000000000000")
