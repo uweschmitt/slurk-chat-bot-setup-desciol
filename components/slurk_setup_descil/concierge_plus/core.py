@@ -89,19 +89,14 @@ class ConciergeBot:
             callback=self.message_callback,
         )
 
-        print(self.tasks, flush=True)
+        await asyncio.sleep(3)
+
         for users_in_task in self.tasks.values():
-            print(users_in_task, flush=True)
             for user_id, task_id in users_in_task.items():
-                print("forward", user_id, task_id, flush=True)
                 room_id = await self.create_forward_room()
-                print(room_id, flush=True)
                 etag = await self.get_user(user_id)
-                print(etag, flush=True)
                 await self.remove_user_from_room(user_id, self.waiting_room_id, etag)
-                print("removed user", flush=True)
                 await self.add_user_to_room(user_id, room_id)
-                print("added user to new room", flush=True)
                 await self.sio.emit("room_created", {"room": room_id, "task": task_id})
 
     async def create_forward_room(self):

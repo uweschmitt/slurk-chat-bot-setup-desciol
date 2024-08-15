@@ -2,6 +2,7 @@ version: '3.4'
 
 services:
   setup_service:
+    image: registry.ethz.ch/sis/slurk-chat-bot-setup-descil:setup_service
     build:
       context: ./projects/setup_service
     ports:
@@ -17,6 +18,7 @@ services:
     - "ADMIN_TOKEN=666"
 
   concierge_plus:
+    image: registry.ethz.ch/sis/slurk-chat-bot-setup-descil:concierge_plus
     build:
       context: ./projects/concierge_plus/
     environment:
@@ -27,12 +29,6 @@ services:
     - "SLURK_HOST=http://slurk"
     - "SLURK_PORT=80"
     - "PYTHONASYNCIODEBUG=1"
-
-  slurk_delete_logs:
-    image: alpine
-    volumes:
-    - logs:/log
-    command: "sh -x -c 'rm -vf /log/slurk.log'"
 
   slurk:
     image: registry.ethz.ch/sis/slurk-descil:slurk-descil
@@ -59,9 +55,6 @@ services:
     - "HTTP_PROXY="
     - "HTTPS_PROXY="
     - "ADMIN_TOKEN=666"
-    depends_on:
-      slurk_delete_logs:
-        condition: service_completed_successfully
 
 volumes:
   logs:
