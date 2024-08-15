@@ -37,8 +37,10 @@ class SetupData(BaseModel):
     bot_ids: List[int] = [
         1,
     ]
-    redirect_url: str = "https://sis.id.ethz.ch"
-    timeout_waiting_room: int = 5
+    waiting_room_timeout_url: str = "https://sis.id.ethz.ch"
+    waiting_room_timeout_seconds: int = 5
+    experiment_timeout_url: str = "https://sis.id.ethz.ch"
+    experiment_timeout_seconds: int = 20
 
 
 @app.post("/setup")
@@ -48,8 +50,10 @@ async def setup(setup_data: SetupData):
     """
     n_users = setup_data.n_users
     bot_ids = setup_data.bot_ids
-    redirect_url = setup_data.redirect_url
-    timeout_waiting_room = setup_data.timeout_waiting_room
+    waiting_room_timeout_url = setup_data.waiting_room_timeout_url
+    waiting_room_timeout_seconds = setup_data.waiting_room_timeout_seconds
+    experiment_timeout_url = setup_data.experiment_timeout_url
+    experiment_timeout_seconds = setup_data.experiment_timeout_seconds
 
     api_token = await get_api_token()
     print("TOKEN", api_token, flush=True)
@@ -69,8 +73,10 @@ async def setup(setup_data: SetupData):
         waiting_room_id,
         task_room_id,
         bot_ids,
-        redirect_url,
-        timeout_waiting_room,
+        waiting_room_timeout_url,
+        waiting_room_timeout_seconds,
+        experiment_timeout_url,
+        experiment_timeout_seconds,
         n_users,
         user_tokens,
         f"concierge_bot_{request_id}",

@@ -28,8 +28,8 @@ class ConciergeBot:
         self.concierge_user = str(config["concierge_user"])
         self.waiting_room_id = str(config["waiting_room_id"])
         self.bot_ids = config["bot_ids"]
-        self.redirect_url = config["redirect_url"]
-        self.timeout = config["timeout_waiting_room"]
+        self.redirect_url = config["waiting_room_timeout_url"]
+        self.timeout = config["waiting_room_timeout_seconds"]
         self.user_tokens = config["user_tokens"]
         self.number_users_in_room_missing = len(self.user_tokens)
         self.timeout_manager_active = False
