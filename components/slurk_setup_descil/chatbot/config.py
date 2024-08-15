@@ -32,5 +32,4 @@ TIME_CLOSE = 0.25
 
 TASK_TITLE = "Play with the AI."
 
-with open(os.path.join(ROOT, "data", "task_greeting.txt"), "r", encoding="utf-8") as f:
-    TASK_GREETING = f.read().split("\n\n\n")
+TASK_GREETING = "Hi everyone!"
