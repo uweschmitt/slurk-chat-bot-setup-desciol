@@ -45,8 +45,6 @@ services:
           -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker
           "slurk:create_app()"
           |& tee /log/slurk.log
-    volumes:
-    - logs:/log
     ports:
     - "8788:80"
     environment:
@@ -55,6 +53,3 @@ services:
     - "HTTP_PROXY="
     - "HTTPS_PROXY="
     - "ADMIN_TOKEN=666"
-
-volumes:
-  logs:
