@@ -52,6 +52,7 @@ async def setup(setup_data: SetupData):
     timeout_waiting_room = setup_data.timeout_waiting_room
 
     api_token = await get_api_token()
+    print("TOKEN", api_token, flush=True)
     waiting_room_id, task_room_id, task_id = await setup_waiting_room(
         SLURK_HOST, api_token, n_users
     )

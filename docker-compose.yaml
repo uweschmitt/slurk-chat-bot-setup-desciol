@@ -14,6 +14,7 @@ services:
     - "CONCIERGE_URL=http://concierge_plus:82"
     - "SLURK_HOST=http://slurk:80"
     - "TOKEN_SERVICE_URL=http://slurk-access-token-reader:83/token"
+    - "ADMIN_TOKEN=666"
 
   concierge_plus:
     build:
@@ -34,7 +35,7 @@ services:
     command: "sh -x -c 'rm -vf /log/slurk.log'"
 
   slurk:
-    image: registry.ethz.ch/sis/slurk-descil
+    image: registry.ethz.ch/sis/slurk-descil:slurk-descil
     entrypoint: /bin/bash
     command:
         - -c
@@ -57,7 +58,7 @@ services:
     - "https_proxy="
     - "HTTP_PROXY="
     - "HTTPS_PROXY="
-    - "ACCESS_TOKEN=666"
+    - "ADMIN_TOKEN=666"
     depends_on:
       slurk_delete_logs:
         condition: service_completed_successfully
