@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "chatbot_api"
+version = "0.1.0"
+description = ""
+authors = ["Uwe Schmitt <uwe.schmitt@id.ethz.ch>"]
+license = ""
+
+packages = [
+    {include = "slurk_setup_descil/slurk_api", from = "../../components"},
+    {include = "slurk_setup_descil/chatbot", from = "../../components"},
+    {include = "slurk_setup_descil/chatbot_api", from = "../../bases"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+aiohttp = "^3.9.5"
+socketio = "^0.2.1"
+gunicorn = "^22.0.0"
+python-socketio = {extras = ["asyncio-client"], version = "^5.11.3"}
+openai = "^1.40.6"
+
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

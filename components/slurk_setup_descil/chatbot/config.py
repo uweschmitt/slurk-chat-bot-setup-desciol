@@ -32,4 +32,4 @@ TIME_CLOSE = 0.25
 
 TASK_TITLE = "Play with the AI."
 
-TASK_GREETING = "Hi everyone!"
+TASK_GREETING = ["Hi everyone!"]

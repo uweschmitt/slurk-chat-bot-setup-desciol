@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from slurk_setup_descil.setup_service import (
     create_waiting_room_tokens,
+    setup_and_register_chatbot,
     setup_and_register_concierge,
     setup_waiting_room,
 )
@@ -17,6 +18,7 @@ app = FastAPI()
 
 SLURK_HOST = os.environ.get("SLURK_HOST", "http://ssdm-docker-dev.ethz.ch:8088")
 CONCIERGE_URL = os.environ.get("CONCIERGE_URL", "http://localhost:83")
+CHATBOT_URL = os.environ.get("CHATBOT_URL", "http://localhost:84")
 
 
 @app.exception_handler(Exception)
@@ -57,6 +59,7 @@ async def setup(setup_data: SetupData):
 
     api_token = await get_api_token()
     print("TOKEN", api_token, flush=True)
+
     waiting_room_id, task_room_id, task_id = await setup_waiting_room(
         SLURK_HOST, api_token, n_users
     )
@@ -80,6 +83,14 @@ async def setup(setup_data: SetupData):
         n_users,
         user_tokens,
         f"concierge_bot_{request_id}",
+    )
+
+    await setup_and_register_chatbot(
+        SLURK_HOST,
+        CHATBOT_URL,
+        "bot",
+        api_token,
+        task_room_id,
     )
 
     return dict(

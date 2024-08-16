@@ -27,6 +27,7 @@ class ConciergeBot:
         self.api_token = config["api_token"]
         self.concierge_user = str(config["concierge_user"])
         self.waiting_room_id = str(config["waiting_room_id"])
+        self.task_room_id = str(config["task_room_id"])
         self.bot_ids = config["bot_ids"]
         self.redirect_url = config["waiting_room_timeout_url"]
         self.timeout = config["waiting_room_timeout_seconds"]
@@ -283,50 +284,58 @@ class ConciergeBot:
             _async_tasks[id(t)] = t
             self.timeout_manager_active = True
 
-        if len(self.tasks[task_id]) == task["num_users"]:
-            session_id = None
-
-            new_room = await self.create_room(task["layout_id"])
-            # list cast necessary because the dictionary is actively altered
-            # due to parallely received "leave" events
-            for user_id, old_room_id in list(self.tasks[task_id].items()):
-                await self.sio.emit(
-                    "text",
-                    {
-                        "message": "## room complete, forward soon",
-                        "receiver_id": user_id,
-                        "room": room,
-                        "html": True,
-                    },
-                    callback=self.message_callback,
-                )
-
-                await asyncio.sleep(3)
-
-                etag = await self.get_user(user_id)
-                await self.remove_user_from_room(user_id, old_room_id, etag)
-                await self.add_user_to_room(user_id, new_room["id"])
-            del self.tasks[task_id]
-            await self.sio.emit(
-                "room_created", {"room": new_room["id"], "task": task_id}
-            )
-
-            LOG.info(f"Created session {session_id}")
-            await self.disconnect()
-
-        else:
+        print(
+            "CONCIERGE", len(self.tasks[task_id]), repr(task["num_users"]), flush=True
+        )
+        if len(self.tasks[task_id]) != task["num_users"]:
+            n_missing = int(task["num_users"]) - len(self.tasks[task_id])
             await self.sio.emit(
                 "text",
                 {
-                    "message": f"### Hello, {user_name}!\n\n"
-                    "I am looking for a partner for you, it might take "
-                    "some time, so be patient, please...",
+                    "message": (
+                        f"### Hello, {user_name}!\n\n"
+                        f"We are waiting for {n_missing} user(s) to join before we continue"
+                    ),
                     "receiver_id": user_id,
                     "room": room,
                     "html": True,
                 },
                 callback=self.message_callback,
             )
+            return
+
+        await self.sio.emit(
+            "text",
+            {
+                "message": f"### Hello, {user_name}!\n\n",
+                "receiver_id": user_id,
+                "room": room,
+                "html": True,
+            },
+            callback=self.message_callback,
+        )
+
+        # list cast necessary because the dictionary is actively altered
+        # due to parallely received "leave" events
+        for user_id, old_room_id in list(self.tasks[task_id].items()):
+            await self.sio.emit(
+                "text",
+                {
+                    "message": "## room complete, you will be forwarded soon",
+                    "receiver_id": user_id,
+                    "room": room,
+                    "html": True,
+                },
+                callback=self.message_callback,
+            )
+        await asyncio.sleep(3)
+        for user_id, old_room_id in list(self.tasks[task_id].items()):
+            etag = await self.get_user(user_id)
+            await self.remove_user_from_room(user_id, old_room_id, etag)
+            await self.add_user_to_room(user_id, self.task_room_id)
+
+        del self.tasks[task_id]
+        await self.disconnect()
 
     async def disconnect(self):
         _async_tasks.pop(self, None)

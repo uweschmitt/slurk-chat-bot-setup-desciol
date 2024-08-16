@@ -9,6 +9,28 @@ from slurk_setup_descil.slurk_api import (
 )
 
 
+async def setup_and_register_chatbot(uri, bot_url, bot_name, api_token, task_room_id):
+    permissions_id = await set_permissions(uri, api_token, CONCIERGE_PERMISSIONS)
+    bot_token = await create_room_token(
+        uri, api_token, permissions_id, task_room_id, None, None
+    )
+
+    bot_user = await create_user(uri, api_token, bot_name, bot_token)
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            f"{bot_url}/register",
+            json=dict(
+                bot_token=bot_token,
+                bot_user=bot_user,
+                bot_name=bot_name,
+                api_token=api_token,
+                task_room_id=task_room_id,
+            ),
+        ) as r:
+            r.raise_for_status()
+            print(r)
+
+
 async def setup_and_register_concierge(
     uri,
     concierge_url,
@@ -91,7 +113,7 @@ WAITING_ROOM_LAYOUT = {
         },
     ],
     "css": {
-        "header, footer": {"background": "#115E91"},
+        "header, footer": {"background": "#11915E"},
         "#image-area": {"align-content": "left", "margin": "50px 20px 15px"},
     },
     "scripts": {

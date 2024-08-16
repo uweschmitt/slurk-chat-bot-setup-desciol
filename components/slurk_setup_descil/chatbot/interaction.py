@@ -4,25 +4,29 @@ import re
 from random import randint
 from time import sleep
 
-from bots.chatbot.lib.prompti import prompts
 from openai import AzureOpenAI, OpenAI
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-model = "gpt-3.5-turbo-1106"
+from .prompti import prompts
 
-if os.getenv("USE_AZURE_OPENAI"):
-    model = "css-openai-gpt35"
-    client = AzureOpenAI(
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_version="2023-12-01-preview",
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-    )
+if 0:
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    model = "gpt-3.5-turbo-1106"
+
+    if os.getenv("USE_AZURE_OPENAI"):
+        model = "css-openai-gpt35"
+        client = AzureOpenAI(
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            api_version="2023-12-01-preview",
+            azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+        )
 
 # completion = client.chat.completions.create()
 stop = "\n"
 
 
-def generate_bot_message(past_messages):
+async def generate_bot_message(past_messages):
+    return f"past message count is {len(past_messages)}"
+
     bot_messages = []
     bot_messages.append({"role": "system", "content": str(prompts)})
 
