@@ -1,3 +1,7 @@
 venv
 .*.sw?
 dist
+*.pyc
+*.pyo
+*.pyd
+__pypcache__
