@@ -62,7 +62,9 @@ class Chatbot:
             user_id = user["id"]
 
             if user_id == self.bot_user:
+                print("BOT SLEEPS", flush=True)
                 await asyncio.sleep(1.0 + random.random() * 5)
+                print("BOT SLEPT", flush=True)
                 for line in TASK_GREETING:
                     print("  ", line, flush=True)
                     await self.sio.emit(

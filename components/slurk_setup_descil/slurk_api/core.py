@@ -94,3 +94,102 @@ async def create_task(uri, api_token, layout_id, num_users, name):
 
 async def get_api_token():
     return os.environ.get("ADMIN_TOKEN", "00000000-0000-0000-0000-000000000000")
+
+
+async def redirect_users(
+    slurk_uri, token, user_ids, task_id, from_room_id, to_room_id, sio
+):
+    """
+    for eacch user create room with layout
+    add users to the rooms
+    show message
+    """
+
+    for user_id in user_ids:
+        print(user_id, flush=True)
+        etag = await get_user_etag(slurk_uri, token, user_id)
+        print(etag, flush=True)
+        await remove_user_from_room(slurk_uri, token, user_id, from_room_id, etag)
+        print("REMOVED USER", flush=True)
+        await add_user_to_room(slurk_uri, token, user_id, to_room_id)
+        print("ADD USER TO NEW ROOM", flush=True)
+        await sio.emit("room_created", {"room": to_room_id, "task": task_id})
+        print("EMMITEED EVENT", flush=True)
+
+
+async def remove_user_from_room(slurk_uri, token, user_id, room_id, etag):
+    """Remove user from (waiting) room.
+
+    :param user_id: Identifier of user.
+    :type user_id: int
+    :param room_id: Identifier of room.
+    :type room_id: int
+    :param etag: Used for request validation.
+    :type etag: str
+    """
+    async with delete(
+        token,
+        f"{slurk_uri}/users/{user_id}/rooms/{room_id}",
+        etag=etag,
+    ) as response:
+        if not response.ok:
+            response.raise_for_status()
+
+
+async def create_forward_room(slurk_uri, token, forward_url):
+    ROOM_LAYOUT = {
+        "title": "Forward Room",
+        "subtitle": "Timeout....",
+        "html": [
+            {
+                "layout-type": "script",
+                "id": "",
+                "layout-content": f"window.location.replace({forward_url!r});",
+            },
+        ],
+        "css": {
+            "header, footer": {"background": "#115E91"},
+            "#image-area": {"align-content": "left", "margin": "50px 20px 15px"},
+        },
+        "scripts": {
+            "incoming-text": "markdown",
+            "incoming-image": "display-image",
+            "submit-message": "send-message",
+            "print-history": "markdown-history",
+        },
+        "show_users": False,
+        "show_latency": False,
+        "read_only": True,
+    }
+
+    async with post(token, f"{slurk_uri}/layouts", ROOM_LAYOUT) as r:
+        r.raise_for_status()
+        rj = await r.json()
+        layout_id = rj["id"]
+
+    async with post(token, f"{slurk_uri}/rooms", dict(layout_id=layout_id)) as r:
+        return (await r.json())["id"]
+
+
+async def get_user_etag(slurk_uri, token, user):
+    async with get(token, f"{slurk_uri}/users/{user}") as response:
+        if not response.ok:
+            response.raise_for_status()
+        return response.headers["ETag"]
+
+
+async def add_user_to_room(slurk_uri, token, user_id, room_id):
+    """Let user join task room.
+
+    :param user_id: Identifier of user.
+    :type user_id: int
+    :param room_id: Identifier of room.
+    :type room_id: int
+    """
+    async with post(
+        token,
+        f"{slurk_uri}/users/{user_id}/rooms/{room_id}",
+    ) as response:
+        if not response.ok:
+            response.raise_for_status()
+        return response.headers["ETag"]

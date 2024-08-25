@@ -3,9 +3,10 @@ import logging
 import time
 
 import socketio
-from slurk_setup_descil.slurk_api import delete, get, post
+from slurk_setup_descil.slurk_api import create_forward_room, get, post, redirect_users
 
 LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.DEBUG)
 
 _async_tasks = dict()
 
@@ -92,49 +93,30 @@ class ConciergeBot:
 
         await asyncio.sleep(3)
 
+        user_ids = []
+        task_id = None
+        print(self.tasks.values(), flush=True)
         for users_in_task in self.tasks.values():
             for user_id, task_id in users_in_task.items():
-                room_id = await self.create_forward_room()
-                etag = await self.get_user(user_id)
-                await self.remove_user_from_room(user_id, self.waiting_room_id, etag)
-                await self.add_user_to_room(user_id, room_id)
-                await self.sio.emit("room_created", {"room": room_id, "task": task_id})
+                user_ids.append(user_id)
 
-    async def create_forward_room(self):
-        ROOM_LAYOUT = {
-            "title": "Forward Room",
-            "subtitle": "Timeout....",
-            "html": [
-                {
-                    "layout-type": "script",
-                    "id": "",
-                    "layout-content": f"window.location.replace({self.redirect_url!r});",
-                },
-            ],
-            "css": {
-                "header, footer": {"background": "#115E91"},
-                "#image-area": {"align-content": "left", "margin": "50px 20px 15px"},
-            },
-            "scripts": {
-                "incoming-text": "markdown",
-                "incoming-image": "display-image",
-                "submit-message": "send-message",
-                "print-history": "markdown-history",
-            },
-            "show_users": False,
-            "show_latency": False,
-            "read_only": True,
-        }
+        print(user_ids, flush=True)
+        forward_room_id = await create_forward_room(
+            self.uri, self.concierge_token, self.redirect_url
+        )
+        print("CREATED FW ROOM", flush=True)
 
-        async with post(self.concierge_token, f"{self.uri}/layouts", ROOM_LAYOUT) as r:
-            r.raise_for_status()
-            rj = await r.json()
-            layout_id = rj["id"]
+        await redirect_users(
+            self.uri,
+            self.concierge_token,
+            user_ids,
+            task_id,
+            self.waiting_room_id,
+            forward_room_id,
+            self.sio,
+        )
 
-        async with post(
-            self.concierge_token, f"{self.uri}/rooms", dict(layout_id=layout_id)
-        ) as r:
-            return (await r.json())["id"]
+        print("REDIRECTED USERS", flush=True)
 
     async def fetch_user_token(self, user_id):
         async with get(self.api_token, f"{self.uri}/users/{user_id}") as response:
@@ -194,13 +176,6 @@ class ConciergeBot:
             LOG.debug("Got user task successfully.")
             return await response.json()
 
-    async def get_user(self, user):
-        async with get(self.concierge_token, f"{self.uri}/users/{user}") as response:
-            if not response.ok:
-                LOG.error(f"Could not get user: {response.status_code}")
-                response.raise_for_status()
-            return response.headers["ETag"]
-
     async def create_room(self, layout_id):
         """Create room for the task.
 
@@ -215,44 +190,6 @@ class ConciergeBot:
                 response.raise_for_status()
             LOG.debug("Created room successfully.")
             return await response.json()
-
-    async def add_user_to_room(self, user_id, room_id):
-        """Let user join task room.
-
-        :param user_id: Identifier of user.
-        :type user_id: int
-        :param room_id: Identifier of room.
-        :type room_id: int
-        """
-        async with post(
-            self.concierge_token,
-            f"{self.uri}/users/{user_id}/rooms/{room_id}",
-        ) as response:
-            if not response.ok:
-                LOG.error(f"Could not let user join room: {response.status_code}")
-                response.raise_for_status()
-            LOG.debug("Sending user to new room was successful.")
-            return response.headers["ETag"]
-
-    async def remove_user_from_room(self, user_id, room_id, etag):
-        """Remove user from (waiting) room.
-
-        :param user_id: Identifier of user.
-        :type user_id: int
-        :param room_id: Identifier of room.
-        :type room_id: int
-        :param etag: Used for request validation.
-        :type etag: str
-        """
-        async with delete(
-            self.concierge_token,
-            f"{self.uri}/users/{user_id}/rooms/{room_id}",
-            etag=etag,
-        ) as response:
-            if not response.ok:
-                LOG.error(f"Could not remove user from room: {response.status_code}")
-                response.raise_for_status()
-            LOG.debug("Removing user from room was successful.")
 
     async def user_task_join(self, user, task, room):
         """A connected user and their task are registered.
@@ -329,10 +266,16 @@ class ConciergeBot:
                 callback=self.message_callback,
             )
         await asyncio.sleep(3)
-        for user_id, old_room_id in list(self.tasks[task_id].items()):
-            etag = await self.get_user(user_id)
-            await self.remove_user_from_room(user_id, old_room_id, etag)
-            await self.add_user_to_room(user_id, self.task_room_id)
+
+        user_ids = sorted(self.self.tasks[task_id].keys())
+        await redirect_users(
+            self.uri,
+            self.concierge_token,
+            user_ids,
+            task_id,
+            self.waiting_room_id,
+            self.task_room_id,
+        )
 
         del self.tasks[task_id]
         await self.disconnect()

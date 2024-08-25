@@ -23,7 +23,10 @@ async def register(request):
     concierge_config = await request.json()
     for p in asyncio.all_tasks():
         print("REST HANDLER", p, flush=True)
+    print("-------")
     print("CONFIG", concierge_config, flush=True)
+    print("-------")
+    print("HANDLER", asyncio.get_event_loop().get_exception_handler(), flush=True)
     bot = ConciergeBot(
         concierge_config,
         SLURK_HOST,
