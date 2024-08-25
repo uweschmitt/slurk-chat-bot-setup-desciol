@@ -90,7 +90,7 @@ async def setup(setup_data: SetupData):
         chat_room_timeout_seconds,
         n_users,
         user_tokens,
-        f"concierge_bot_{request_id}",
+        "Concierge",
     )
 
     await setup_and_register_chatbot(
