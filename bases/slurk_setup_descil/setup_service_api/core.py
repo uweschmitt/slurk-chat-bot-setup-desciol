@@ -3,7 +3,7 @@ import traceback
 import uuid
 from typing import List
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from slurk_setup_descil.setup_service import (
@@ -43,6 +43,7 @@ class SetupData(BaseModel):
     waiting_room_timeout_seconds: int = 5
     experiment_timeout_url: str = "https://sis.id.ethz.ch"
     experiment_timeout_seconds: int = 20
+    api_token: str = "666"
 
 
 @app.post("/setup")
@@ -50,6 +51,11 @@ async def setup(setup_data: SetupData):
     """
     setup an experiment with *n_users* using a bot *bot_id*.
     """
+    api_token = await get_api_token()
+    submittted_api_token = setup_data.api_token
+    if api_token != submittted_api_token:
+        raise HTTPException(status_code=401, detail="api token invalid.")
+
     n_users = setup_data.n_users
     bot_ids = setup_data.bot_ids
     waiting_room_timeout_url = setup_data.waiting_room_timeout_url
@@ -57,7 +63,6 @@ async def setup(setup_data: SetupData):
     experiment_timeout_url = setup_data.experiment_timeout_url
     experiment_timeout_seconds = setup_data.experiment_timeout_seconds
 
-    api_token = await get_api_token()
     print("TOKEN", api_token, flush=True)
 
     waiting_room_id, task_room_id, task_id = await setup_waiting_room(
