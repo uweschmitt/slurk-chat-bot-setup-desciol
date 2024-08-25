@@ -42,8 +42,8 @@ class SetupData(BaseModel):
     ]
     waiting_room_timeout_url: str = "https://sis.id.ethz.ch"
     waiting_room_timeout_seconds: int = 5
-    experiment_timeout_url: str = "https://sis.id.ethz.ch"
-    experiment_timeout_seconds: int = 20
+    chat_room_timeout_url: str = "https://sis.id.ethz.ch"
+    chat_room_timeout_seconds: int = 20
     api_token: str = "666"
 
 
@@ -61,8 +61,8 @@ async def setup(setup_data: SetupData):
     bot_ids = setup_data.bot_ids
     waiting_room_timeout_url = setup_data.waiting_room_timeout_url
     waiting_room_timeout_seconds = setup_data.waiting_room_timeout_seconds
-    experiment_timeout_url = setup_data.experiment_timeout_url
-    experiment_timeout_seconds = setup_data.experiment_timeout_seconds
+    chat_room_timeout_url = setup_data.chat_room_timeout_url
+    chat_room_timeout_seconds = setup_data.chat_room_timeout_seconds
 
     print("TOKEN", api_token, flush=True)
 
@@ -86,8 +86,8 @@ async def setup(setup_data: SetupData):
         bot_ids,
         waiting_room_timeout_url,
         waiting_room_timeout_seconds,
-        experiment_timeout_url,
-        experiment_timeout_seconds,
+        chat_room_timeout_url,
+        chat_room_timeout_seconds,
         n_users,
         user_tokens,
         f"concierge_bot_{request_id}",
