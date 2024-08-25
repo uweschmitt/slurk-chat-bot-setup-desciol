@@ -16,7 +16,8 @@ from slurk_setup_descil.slurk_api import get_api_token
 
 app = FastAPI()
 
-SLURK_HOST = os.environ.get("SLURK_HOST", "http://ssdm-docker-dev.ethz.ch:8088")
+SLURK_HOST = os.environ.get("SLURK_HOST", "http://slurk")
+SLURK_PORT = os.environ.get("SLURK_PORT", "80")
 CONCIERGE_URL = os.environ.get("CONCIERGE_URL", "http://localhost:83")
 CHATBOT_URL = os.environ.get("CHATBOT_URL", "http://localhost:84")
 
@@ -65,17 +66,19 @@ async def setup(setup_data: SetupData):
 
     print("TOKEN", api_token, flush=True)
 
+    slurk_url = f"{SLURK_HOST}:{SLURK_PORT}"
+
     waiting_room_id, task_room_id, task_id = await setup_waiting_room(
-        SLURK_HOST, api_token, n_users
+        slurk_url, api_token, n_users
     )
 
     user_tokens = await create_waiting_room_tokens(
-        SLURK_HOST, api_token, waiting_room_id, task_id, n_users
+        slurk_url, api_token, waiting_room_id, task_id, n_users
     )
 
     request_id = uuid.uuid1().hex
     await setup_and_register_concierge(
-        SLURK_HOST,
+        slurk_url,
         CONCIERGE_URL,
         api_token,
         waiting_room_id,
@@ -91,7 +94,7 @@ async def setup(setup_data: SetupData):
     )
 
     await setup_and_register_chatbot(
-        SLURK_HOST,
+        slurk_url,
         CHATBOT_URL,
         "bot",
         api_token,

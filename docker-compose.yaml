@@ -14,8 +14,8 @@ services:
     - "HTTPS_PROXY="
     - "CONCIERGE_URL=http://concierge_plus:82"
     - "CHATBOT_URL=http://chatbot:84"
-    - "SLURK_HOST=http://slurk:80"
-    - "TOKEN_SERVICE_URL=http://slurk-access-token-reader:83/token"
+    - "SLURK_HOST=http://slurk"
+    - "SLURK_PORT=80"
     - "ADMIN_TOKEN=666"
 
   concierge_plus:
