@@ -3,7 +3,7 @@ import logging
 import time
 
 import socketio
-from slurk_setup_descil.slurk_api import create_forward_room, get, post, redirect_users
+from slurk_setup_descil.slurk_api import create_forward_room, get, post, redirect_user
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -35,6 +35,7 @@ class ConciergeBot:
         self.user_tokens = config["user_tokens"]
         self.number_users_in_room_missing = len(self.user_tokens)
         self.timeout_manager_active = False
+        self.room_timeout_happened = False
 
         self.tasks = dict()
         self.uri = host
@@ -47,12 +48,16 @@ class ConciergeBot:
             f"Running concierge bot on {self.uri} with token {self.concierge_token}"
         )
 
+        self.forward_room_id = None
+
         @sio.event
         async def status(data):
             LOG.info(f"STATUS {data}")
             if data["type"] == "join":
                 user = data["user"]
                 task = await self.get_user_task(user)
+                if self.room_timeout_happened:
+                    await self.redirect_user(user["id"], task["id"])
                 if task:
                     await self.user_task_join(user, task, data["room"])
             elif data["type"] == "leave":
@@ -69,9 +74,10 @@ class ConciergeBot:
                 return
             await asyncio.sleep(0.1)
 
+        self.room_timeout_happened = True
         await self.redirect_users()
 
-    async def redirect_users(self):
+    async def redirect_user(self, user_id, task_id):
         """
         for eacch user create room with layout
         add users to the rooms
@@ -84,7 +90,8 @@ class ConciergeBot:
                     "## We could not fill the waiting room with sufficient number of\n"
                     "participants you will be forwarded in a few seconds"
                 ),
-                "broadcast": True,
+                "broadcast": False,
+                "receiver_id": user_id,
                 "room": self.waiting_room_id,
                 "html": True,
             },
@@ -93,28 +100,29 @@ class ConciergeBot:
 
         await asyncio.sleep(3)
 
-        user_ids = []
-        task_id = None
-        print(self.tasks.values(), flush=True)
-        for users_in_task in self.tasks.values():
-            for user_id, task_id in users_in_task.items():
-                user_ids.append(user_id)
-
-        print(user_ids, flush=True)
-        forward_room_id = await create_forward_room(
-            self.uri, self.concierge_token, self.redirect_url
-        )
         print("CREATED FW ROOM", flush=True)
 
-        await redirect_users(
+        await redirect_user(
             self.uri,
             self.concierge_token,
-            user_ids,
+            user_id,
             task_id,
             self.waiting_room_id,
-            forward_room_id,
+            self.forward_room_id,
             self.sio,
         )
+
+        print("REDIRECTED USER", flush=True)
+
+    async def redirect_users(self):
+        """
+        for eacch user create room with layout
+        add users to the rooms
+        show message
+        """
+        for users_in_task in self.tasks.values():
+            for user_id, task_id in users_in_task.items():
+                await self.redirect_user(user_id, task_id)
 
         print("REDIRECTED USERS", flush=True)
 
@@ -134,6 +142,10 @@ class ConciergeBot:
                 "user": self.concierge_user,
             },
             namespaces="/",
+        )
+
+        self.forward_room_id = await create_forward_room(
+            self.uri, self.concierge_token, self.redirect_url
         )
 
         # wait until the connection with the server ends
@@ -268,14 +280,15 @@ class ConciergeBot:
         await asyncio.sleep(3)
 
         user_ids = sorted(self.self.tasks[task_id].keys())
-        await redirect_users(
-            self.uri,
-            self.concierge_token,
-            user_ids,
-            task_id,
-            self.waiting_room_id,
-            self.task_room_id,
-        )
+        for user_id in user_ids:
+            await redirect_user(
+                self.uri,
+                self.concierge_token,
+                user_id,
+                task_id,
+                self.waiting_room_id,
+                self.task_room_id,
+            )
 
         del self.tasks[task_id]
         await self.disconnect()

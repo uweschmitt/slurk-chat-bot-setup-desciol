@@ -96,8 +96,8 @@ async def get_api_token():
     return os.environ.get("ADMIN_TOKEN", "00000000-0000-0000-0000-000000000000")
 
 
-async def redirect_users(
-    slurk_uri, token, user_ids, task_id, from_room_id, to_room_id, sio
+async def redirect_user(
+    slurk_uri, token, user_id, task_id, from_room_id, to_room_id, sio
 ):
     """
     for eacch user create room with layout
@@ -105,16 +105,16 @@ async def redirect_users(
     show message
     """
 
-    for user_id in user_ids:
-        print(user_id, flush=True)
-        etag = await get_user_etag(slurk_uri, token, user_id)
-        print(etag, flush=True)
-        await remove_user_from_room(slurk_uri, token, user_id, from_room_id, etag)
-        print("REMOVED USER", flush=True)
-        await add_user_to_room(slurk_uri, token, user_id, to_room_id)
-        print("ADD USER TO NEW ROOM", flush=True)
-        await sio.emit("room_created", {"room": to_room_id, "task": task_id})
-        print("EMMITEED EVENT", flush=True)
+    print(user_id, flush=True)
+    etag = await get_user_etag(slurk_uri, token, user_id)
+    print(etag, flush=True)
+    await remove_user_from_room(slurk_uri, token, user_id, from_room_id, etag)
+    print("REMOVED USER", flush=True)
+    await add_user_to_room(slurk_uri, token, user_id, to_room_id)
+    print("ADD USER TO NEW ROOM", flush=True)
+    print("room_created", {"room": to_room_id, "task": task_id}, flush=True)
+    await sio.emit("room_created", {"room": to_room_id, "task": task_id})
+    print("EMMITEED EVENT", flush=True)
 
 
 async def remove_user_from_room(slurk_uri, token, user_id, room_id, etag):

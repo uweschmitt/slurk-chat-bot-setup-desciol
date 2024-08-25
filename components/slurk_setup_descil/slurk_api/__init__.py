@@ -9,7 +9,7 @@ from slurk_setup_descil.slurk_api.core import (
     get,
     get_api_token,
     post,
-    redirect_users,
+    redirect_user,
     set_permissions,
 )
 
@@ -24,6 +24,6 @@ __all__ = [
     "get",
     "get_api_token",
     "post",
-    "redirect_users",
+    "redirect_user",
     "set_permissions",
 ]
