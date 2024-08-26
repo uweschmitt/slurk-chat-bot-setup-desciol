@@ -1,14 +1,25 @@
 import asyncio
 import logging
+import os
 import time
 
+import aiohttp
 import socketio
-from slurk_setup_descil.slurk_api import create_forward_room, get, post, redirect_user
+from slurk_setup_descil.slurk_api import (
+    create_forward_room,
+    create_room_token,
+    create_user,
+    get,
+    redirect_user,
+    set_permissions,
+)
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
 _async_tasks = dict()
+
+CHATBOT_URL = os.environ.get("CHATBOT_URL", "http://localhost:84")
 
 
 class ConciergeBot:
@@ -24,31 +35,34 @@ class ConciergeBot:
         :param port: Port used by the slurk chat server.
         :type port: int
         """
-        self.concierge_token = config["concierge_token"]
+
         self.api_token = config["api_token"]
-        self.concierge_user = str(config["concierge_user"])
-        self.waiting_room_id = str(config["waiting_room_id"])
-        self.chat_room_id = str(config["chat_room_id"])
+        self.concierge_token = config["concierge_token"]
+        self.concierge_user = config["concierge_user"]
+        self.waiting_room_id = config["waiting_room_id"]
+        self.chat_room_id = config["chat_room_id"]
         self.bot_ids = config["bot_ids"]
         self.redirect_url = config["waiting_room_timeout_url"]
         self.timeout = config["waiting_room_timeout_seconds"]
         self.user_tokens = config["user_tokens"]
+
         self.number_users_in_room_missing = len(self.user_tokens)
         self.timeout_manager_active = False
         self.room_timeout_happened = False
+
+        self.bot_name = "Bot"
 
         self.tasks = dict()
         self.uri = host
         if port is not None:
             self.uri += f":{port}"
-        self.uri += "/slurk/api"
         sio = self.sio = socketio.AsyncClient()
 
         LOG.debug(
             f"Running concierge bot on {self.uri} with token {self.concierge_token}"
         )
 
-        self.forward_room_id = None
+        self.redirect_room_id = None
 
         @sio.event
         async def status(data):
@@ -57,7 +71,7 @@ class ConciergeBot:
                 user = data["user"]
                 task = await self.get_user_task(user)
                 if self.room_timeout_happened:
-                    await self.redirect_user(user["id"], self.forward_room_id)
+                    await self.redirect_user(user["id"], self.redirect_room_id)
                 if task:
                     await self.user_task_join(user, task, data["room"])
             elif data["type"] == "leave":
@@ -72,7 +86,7 @@ class ConciergeBot:
             if self.number_users_in_room_missing <= 0:
                 print("ROOM COMPLETE!", flush=True)
                 return
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.5)
 
         self.room_timeout_happened = True
         await self.redirect_users_timeout()
@@ -122,12 +136,14 @@ class ConciergeBot:
 
         for users_in_task in self.tasks.values():
             for user_id, task_id in users_in_task.items():
-                await self.redirect_user(user_id, task_id, self.forward_room_id)
+                await self.redirect_user(user_id, task_id, self.redirect_room_id)
 
         print("REDIRECTED USERS AFTER TIMEOUT", flush=True)
 
     async def fetch_user_token(self, user_id):
-        async with get(self.api_token, f"{self.uri}/users/{user_id}") as response:
+        async with get(
+            self.api_token, f"{self.uri}/slurk_api/users/{user_id}"
+        ) as response:
             if not response.ok:
                 LOG.error(f"Could not get user: {response.status_code}")
                 response.raise_for_status()
@@ -139,12 +155,12 @@ class ConciergeBot:
             self.uri,
             headers={
                 "Authorization": f"Bearer {self.concierge_token}",
-                "user": self.concierge_user,
+                "user": str(self.concierge_user),
             },
             namespaces="/",
         )
 
-        self.forward_room_id = await create_forward_room(
+        self.redirect_room_id = await create_forward_room(
             self.uri, self.concierge_token, self.redirect_url
         )
 
@@ -180,27 +196,12 @@ class ConciergeBot:
         :type user: dict
         """
         async with get(
-            self.concierge_token, f'{self.uri}/users/{user["id"]}/task'
+            self.concierge_token, f'{self.uri}/slurk/api/users/{user["id"]}/task'
         ) as response:
             if not response.ok:
                 LOG.error(f"Could not get task: {response.status_code}")
                 response.raise_for_status()
             LOG.debug("Got user task successfully.")
-            return await response.json()
-
-    async def create_room(self, layout_id):
-        """Create room for the task.
-
-        :param layout_id: Unique key of layout object.
-        :type layout_id: int
-        """
-        json = {"layout_id": layout_id}
-
-        async with post(self.concierge_token, f"{self.uri}/rooms", json) as response:
-            if not response.ok:
-                LOG.error(f"Could not create task room: {response.status_code}")
-                response.raise_for_status()
-            LOG.debug("Created room successfully.")
             return await response.json()
 
     async def user_task_join(self, user, task, room):
@@ -233,6 +234,17 @@ class ConciergeBot:
             _async_tasks[id(t)] = t
             self.timeout_manager_active = True
 
+        await self.sio.emit(
+            "text",
+            {
+                "message": f"### Hello, {user_name}!\n\n",
+                "receiver_id": user_id,
+                "room": room,
+                "html": True,
+            },
+            callback=self.message_callback,
+        )
+
         print(
             "CONCIERGE", len(self.tasks[task_id]), repr(task["num_users"]), flush=True
         )
@@ -253,21 +265,13 @@ class ConciergeBot:
             )
             return
 
-        await self.sio.emit(
-            "text",
-            {
-                "message": f"### Hello, {user_name}!\n\n",
-                "receiver_id": user_id,
-                "room": room,
-                "html": True,
-            },
-            callback=self.message_callback,
-        )
-
         # list cast necessary because the dictionary is actively altered
         # due to parallely received "leave" events
 
+        await self.setup_and_register_chatbot()
+
         await asyncio.sleep(1)
+
         for user_id, old_room_id in list(self.tasks[task_id].items()):
             await self.sio.emit(
                 "text",
@@ -287,6 +291,34 @@ class ConciergeBot:
 
         del self.tasks[task_id]
         await self.disconnect()
+
+    async def setup_and_register_chatbot(self):
+        permissions = {
+            "api": True,
+            "send_html_message": True,
+            "send_privately": True,
+            "broadcast": True,
+        }
+        permissions_id = await set_permissions(self.uri, self.api_token, permissions)
+        bot_token = await create_room_token(
+            self.uri, self.api_token, permissions_id, self.chat_room_id, None, None
+        )
+
+        bot_user = await create_user(self.uri, self.api_token, self.bot_name, bot_token)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{CHATBOT_URL}/register",
+                json=dict(
+                    bot_token=bot_token,
+                    bot_user=bot_user,
+                    bot_name=self.bot_name,
+                    api_token=self.api_token,
+                    chat_room_id=self.chat_room_id,
+                    bot_ids=self.bot_ids,
+                ),
+            ) as r:
+                r.raise_for_status()
+                print(r)
 
     async def disconnect(self):
         _async_tasks.pop(self, None)

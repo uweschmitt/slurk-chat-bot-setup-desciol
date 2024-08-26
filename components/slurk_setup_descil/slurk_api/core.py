@@ -124,7 +124,7 @@ async def remove_user_from_room(slurk_uri, token, user_id, room_id, etag):
     """
     async with delete(
         token,
-        f"{slurk_uri}/users/{user_id}/rooms/{room_id}",
+        f"{slurk_uri}/slurk/api/users/{user_id}/rooms/{room_id}",
         etag=etag,
     ) as response:
         if not response.ok:
@@ -157,17 +157,19 @@ async def create_forward_room(slurk_uri, token, forward_url):
         "read_only": True,
     }
 
-    async with post(token, f"{slurk_uri}/layouts", ROOM_LAYOUT) as r:
+    async with post(token, f"{slurk_uri}/slurk/api/layouts", ROOM_LAYOUT) as r:
         r.raise_for_status()
         rj = await r.json()
         layout_id = rj["id"]
 
-    async with post(token, f"{slurk_uri}/rooms", dict(layout_id=layout_id)) as r:
+    async with post(
+        token, f"{slurk_uri}/slurk/api/rooms", dict(layout_id=layout_id)
+    ) as r:
         return (await r.json())["id"]
 
 
 async def get_user_etag(slurk_uri, token, user):
-    async with get(token, f"{slurk_uri}/users/{user}") as response:
+    async with get(token, f"{slurk_uri}/slurk/api/users/{user}") as response:
         if not response.ok:
             response.raise_for_status()
         return response.headers["ETag"]
@@ -183,7 +185,7 @@ async def add_user_to_room(slurk_uri, token, user_id, room_id):
     """
     async with post(
         token,
-        f"{slurk_uri}/users/{user_id}/rooms/{room_id}",
+        f"{slurk_uri}/slurk/api/users/{user_id}/rooms/{room_id}",
     ) as response:
         if not response.ok:
             response.raise_for_status()

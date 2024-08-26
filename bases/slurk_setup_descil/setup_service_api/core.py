@@ -8,7 +8,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from slurk_setup_descil.setup_service import (
     create_waiting_room_tokens,
-    setup_and_register_chatbot,
     setup_and_register_concierge,
     setup_chat_room,
     setup_waiting_room,
@@ -102,14 +101,6 @@ async def setup(setup_data: SetupData):
         n_users,
         user_tokens,
         "Concierge",
-    )
-
-    await setup_and_register_chatbot(
-        slurk_url,
-        CHATBOT_URL,
-        "bot",
-        api_token,
-        chat_room_id,
     )
 
     return dict(

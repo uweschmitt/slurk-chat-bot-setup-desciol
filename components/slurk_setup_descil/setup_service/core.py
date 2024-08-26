@@ -9,28 +9,6 @@ from slurk_setup_descil.slurk_api import (
 )
 
 
-async def setup_and_register_chatbot(uri, bot_url, bot_name, api_token, chat_room_id):
-    permissions_id = await set_permissions(uri, api_token, CONCIERGE_PERMISSIONS)
-    bot_token = await create_room_token(
-        uri, api_token, permissions_id, chat_room_id, None, None
-    )
-
-    bot_user = await create_user(uri, api_token, bot_name, bot_token)
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            f"{bot_url}/register",
-            json=dict(
-                bot_token=bot_token,
-                bot_user=bot_user,
-                bot_name=bot_name,
-                api_token=api_token,
-                chat_room_id=chat_room_id,
-            ),
-        ) as r:
-            r.raise_for_status()
-            print(r)
-
-
 async def setup_and_register_concierge(
     uri,
     concierge_url,
@@ -58,16 +36,16 @@ async def setup_and_register_concierge(
             f"{concierge_url}/register",
             json=dict(
                 api_token=api_token,
-                concierge_user=concierge_user,
                 concierge_token=concierge_token,
-                chat_room_id=chat_room_id,
+                concierge_user=concierge_user,
                 waiting_room_id=waiting_room_id,
+                chat_room_id=chat_room_id,
                 bot_ids=bot_ids,
                 waiting_room_timeout_url=waiting_room_timeout_url,
                 waiting_room_timeout_seconds=waiting_room_timeout_seconds,
+                user_tokens=user_tokens,
                 chat_room_timeout_url=chat_room_timeout_url,
                 chat_room_timeout_seconds=chat_room_timeout_seconds,
-                user_tokens=user_tokens,
             ),
         ) as r:
             r.raise_for_status()

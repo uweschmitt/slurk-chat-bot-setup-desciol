@@ -26,7 +26,7 @@ class Chatbot:
         self.bot_token = config["bot_token"]
         self.api_token = config["api_token"]
         self.bot_user = config["bot_user"]
-        self.chat_room_id = config["chat_room_id"]
+        self.chat_room_id = int(config["chat_room_id"])
 
         self.uri = host
         if port is not None:
@@ -57,7 +57,9 @@ class Chatbot:
             if data["type"] != "join":
                 return
 
+            print(data["room"], repr(self.chat_room_id))
             if data["room"] != self.chat_room_id:
+                print("IGNORE")
                 return
 
             user = data["user"]
