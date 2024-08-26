@@ -144,7 +144,7 @@ async def create_forward_room(slurk_uri, token, forward_url):
             {
                 "layout-type": "script",
                 "id": "",
-                "layout-content": f"window.location.replace({forward_url!r});",
+                "layout-content": f"window.location.replace({forward_url!r} + '?token=' + token.id);",
             },
         ],
         "css": {
