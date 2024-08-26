@@ -10,6 +10,7 @@ from slurk_setup_descil.setup_service import (
     create_waiting_room_tokens,
     setup_and_register_chatbot,
     setup_and_register_concierge,
+    setup_chat_room,
     setup_waiting_room,
 )
 from slurk_setup_descil.slurk_api import get_api_token
@@ -68,12 +69,22 @@ async def setup(setup_data: SetupData):
 
     slurk_url = f"{SLURK_HOST}:{SLURK_PORT}"
 
-    waiting_room_id, task_room_id, task_id = await setup_waiting_room(
-        slurk_url, api_token, n_users
+    waiting_room_id, waiting_room_task_id = await setup_waiting_room(
+        slurk_url,
+        api_token,
+        n_users,
+        chat_room_timeout_seconds,
+    )
+
+    chat_room_id, _ = await setup_chat_room(
+        slurk_url,
+        api_token,
+        n_users,
+        chat_room_timeout_seconds,
     )
 
     user_tokens = await create_waiting_room_tokens(
-        slurk_url, api_token, waiting_room_id, task_id, n_users
+        slurk_url, api_token, waiting_room_id, waiting_room_task_id, n_users
     )
 
     request_id = uuid.uuid1().hex
@@ -82,7 +93,7 @@ async def setup(setup_data: SetupData):
         CONCIERGE_URL,
         api_token,
         waiting_room_id,
-        task_room_id,
+        chat_room_id,
         bot_ids,
         waiting_room_timeout_url,
         waiting_room_timeout_seconds,
@@ -98,13 +109,12 @@ async def setup(setup_data: SetupData):
         CHATBOT_URL,
         "bot",
         api_token,
-        task_room_id,
+        chat_room_id,
     )
 
     return dict(
         user_tokens=user_tokens,
         request_id=request_id,
-        task_id=task_id,
-        task_room_id=task_room_id,
         waiting_room_id=waiting_room_id,
+        chat_room_id=chat_room_id,
     )

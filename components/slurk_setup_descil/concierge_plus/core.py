@@ -28,7 +28,7 @@ class ConciergeBot:
         self.api_token = config["api_token"]
         self.concierge_user = str(config["concierge_user"])
         self.waiting_room_id = str(config["waiting_room_id"])
-        self.task_room_id = str(config["task_room_id"])
+        self.chat_room_id = str(config["chat_room_id"])
         self.bot_ids = config["bot_ids"]
         self.redirect_url = config["waiting_room_timeout_url"]
         self.timeout = config["waiting_room_timeout_seconds"]
@@ -57,7 +57,7 @@ class ConciergeBot:
                 user = data["user"]
                 task = await self.get_user_task(user)
                 if self.room_timeout_happened:
-                    await self.redirect_user(user["id"], task["id"])
+                    await self.redirect_user(user["id"], self.forward_room_id)
                 if task:
                     await self.user_task_join(user, task, data["room"])
             elif data["type"] == "leave":
@@ -75,46 +75,27 @@ class ConciergeBot:
             await asyncio.sleep(0.1)
 
         self.room_timeout_happened = True
-        await self.redirect_users()
+        await self.redirect_users_timeout()
 
-    async def redirect_user(self, user_id, task_id):
+    async def redirect_user(self, user_id, task_id, to_room):
         """
         for eacch user create room with layout
         add users to the rooms
         show message
         """
-        await self.sio.emit(
-            "text",
-            {
-                "message": (
-                    "## We could not fill the waiting room with sufficient number of\n"
-                    "participants you will be forwarded in a few seconds"
-                ),
-                "broadcast": False,
-                "receiver_id": user_id,
-                "room": self.waiting_room_id,
-                "html": True,
-            },
-            callback=self.message_callback,
-        )
-
-        await asyncio.sleep(3)
-
-        print("CREATED FW ROOM", flush=True)
-
         await redirect_user(
             self.uri,
             self.concierge_token,
             user_id,
             task_id,
             self.waiting_room_id,
-            self.forward_room_id,
+            to_room,
             self.sio,
         )
 
         print("REDIRECTED USER", flush=True)
 
-    async def redirect_users(self):
+    async def redirect_users_timeout(self):
         """
         for eacch user create room with layout
         add users to the rooms
@@ -122,9 +103,28 @@ class ConciergeBot:
         """
         for users_in_task in self.tasks.values():
             for user_id, task_id in users_in_task.items():
-                await self.redirect_user(user_id, task_id)
+                await self.sio.emit(
+                    "text",
+                    {
+                        "message": (
+                            "## We could not fill the waiting room with sufficient number of\n"
+                            "participants you will be forwarded in a few seconds"
+                        ),
+                        "broadcast": False,
+                        "receiver_id": user_id,
+                        "room": self.waiting_room_id,
+                        "html": True,
+                    },
+                    callback=self.message_callback,
+                )
 
-        print("REDIRECTED USERS", flush=True)
+        await asyncio.sleep(3)
+
+        for users_in_task in self.tasks.values():
+            for user_id, task_id in users_in_task.items():
+                await self.redirect_user(user_id, task_id, self.forward_room_id)
+
+        print("REDIRECTED USERS AFTER TIMEOUT", flush=True)
 
     async def fetch_user_token(self, user_id):
         async with get(self.api_token, f"{self.uri}/users/{user_id}") as response:
@@ -266,6 +266,8 @@ class ConciergeBot:
 
         # list cast necessary because the dictionary is actively altered
         # due to parallely received "leave" events
+
+        await asyncio.sleep(1)
         for user_id, old_room_id in list(self.tasks[task_id].items()):
             await self.sio.emit(
                 "text",
@@ -277,18 +279,11 @@ class ConciergeBot:
                 },
                 callback=self.message_callback,
             )
-        await asyncio.sleep(3)
+        await asyncio.sleep(2)
 
-        user_ids = sorted(self.self.tasks[task_id].keys())
+        user_ids = sorted(self.tasks[task_id].keys())
         for user_id in user_ids:
-            await redirect_user(
-                self.uri,
-                self.concierge_token,
-                user_id,
-                task_id,
-                self.waiting_room_id,
-                self.task_room_id,
-            )
+            await self.redirect_user(user_id, task_id, self.chat_room_id)
 
         del self.tasks[task_id]
         await self.disconnect()

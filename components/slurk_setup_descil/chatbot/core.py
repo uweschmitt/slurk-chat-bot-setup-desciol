@@ -26,7 +26,7 @@ class Chatbot:
         self.bot_token = config["bot_token"]
         self.api_token = config["api_token"]
         self.bot_user = config["bot_user"]
-        self.task_room_id = str(config["task_room_id"])
+        self.chat_room_id = config["chat_room_id"]
 
         self.uri = host
         if port is not None:
@@ -34,7 +34,7 @@ class Chatbot:
         self.uri += "/slurk/api"
         self.sio = socketio.AsyncClient()
 
-        self.players_per_room = dict()
+        self.players_per_room = []
         self.message_history = dict()
 
     async def run(self):
@@ -57,30 +57,32 @@ class Chatbot:
             if data["type"] != "join":
                 return
 
+            if data["room"] != self.chat_room_id:
+                return
+
             user = data["user"]
-            room_id = data["room"]
             user_id = user["id"]
+
+            print("JOIN", user_id, "BOT IS", self.bot_user)
 
             if user_id == self.bot_user:
                 print("BOT SLEEPS", flush=True)
                 await asyncio.sleep(1.0 + random.random() * 5)
                 print("BOT SLEPT", flush=True)
                 for line in TASK_GREETING:
-                    print("  ", line, flush=True)
+                    print(line, flush=True)
                     await self.sio.emit(
                         "text",
                         {
                             "message": line,
-                            "room": room_id,
+                            "room": self.chat_room_id,
                             "html": True,
-                            "broadcast": True,
+                            "broadcast": False,
                         },
                     )
                     await asyncio.sleep(0.5 + random.random() * 0.5)
 
-            self.players_per_room.setdefault(room_id, []).append(
-                {"msg_n": 0, "status": "ready", **user}
-            )
+            self.players_per_room.append({"msg_n": 0, "status": "ready", **user})
 
         @self.sio.event
         async def text_message(data):
@@ -102,8 +104,11 @@ class Chatbot:
             if user_id == self.bot_user:
                 return
 
+            print("TEXT MESSAGE", data)
+            print(self.players_per_room, flush=True)
+
             # if the message is part of the main discussion count it
-            for usr in self.players_per_room[room_id]:
+            for usr in self.players_per_room:
                 if usr["id"] == user_id and usr["status"] == "ready":
                     usr["msg_n"] += 1
                 elif usr["id"] == user_id and usr["status"] == "done":
@@ -153,9 +158,6 @@ class Chatbot:
         )
         await asyncio.sleep(TIME_CLOSE * 2 * 60)
         await self.room_to_read_only(room_id)
-
-        # remove any task room specific objects
-        self.players_per_room.pop(room_id)
 
     async def room_to_read_only(self, room_id):
         """Set room to read only."""

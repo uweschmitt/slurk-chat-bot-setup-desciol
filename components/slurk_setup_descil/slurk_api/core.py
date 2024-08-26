@@ -16,7 +16,7 @@ async def get(api_token, uri):
 
 @asynccontextmanager
 async def post(api_token, uri, json=None):
-    print(repr(api_token), repr(uri), repr(json))
+    print(repr(api_token), repr(uri), repr(json), flush=True)
     headers = {
         "Authorization": f"Bearer {api_token}",
         "Content-Type": "application/json",
@@ -107,14 +107,9 @@ async def redirect_user(
 
     print(user_id, flush=True)
     etag = await get_user_etag(slurk_uri, token, user_id)
-    print(etag, flush=True)
     await remove_user_from_room(slurk_uri, token, user_id, from_room_id, etag)
-    print("REMOVED USER", flush=True)
     await add_user_to_room(slurk_uri, token, user_id, to_room_id)
-    print("ADD USER TO NEW ROOM", flush=True)
-    print("room_created", {"room": to_room_id, "task": task_id}, flush=True)
     await sio.emit("room_created", {"room": to_room_id, "task": task_id})
-    print("EMMITEED EVENT", flush=True)
 
 
 async def remove_user_from_room(slurk_uri, token, user_id, room_id, etag):

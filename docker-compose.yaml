@@ -47,7 +47,7 @@ services:
     - "8790:84"
 
   slurk:
-    image: registry.ethz.ch/sis/slurk-descil:slurk-descil
+    image: slurk # registry.ethz.ch/sis/slurk-descil:slurk-descil
     entrypoint: /bin/bash
     command:
         - -c
