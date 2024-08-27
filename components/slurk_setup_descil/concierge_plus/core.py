@@ -12,6 +12,7 @@ from slurk_setup_descil.slurk_api import (
     get,
     redirect_user,
     set_permissions,
+    setup_chat_room,
 )
 
 LOG = logging.getLogger(__name__)
@@ -40,13 +41,14 @@ class ConciergeBot:
         self.concierge_token = config["concierge_token"]
         self.concierge_user = config["concierge_user"]
         self.waiting_room_id = config["waiting_room_id"]
-        self.chat_room_id = config["chat_room_id"]
         self.bot_ids = config["bot_ids"]
         self.redirect_url = config["waiting_room_timeout_url"]
         self.timeout = config["waiting_room_timeout_seconds"]
         self.user_tokens = config["user_tokens"]
+        self.chat_room_timeout_seconds = config["chat_room_timeout_seconds"]
 
-        self.number_users_in_room_missing = len(self.user_tokens)
+        self.num_users = len(self.user_tokens)
+        self.number_users_in_room_missing = self.num_users
         self.timeout_manager_active = False
         self.room_timeout_happened = False
 
@@ -66,7 +68,7 @@ class ConciergeBot:
 
         @sio.event
         async def status(data):
-            LOG.info(f"STATUS {data}")
+            print("STATUS GOT", data)
             if data["type"] == "join":
                 user = data["user"]
                 task = await self.get_user_task(user)
@@ -115,6 +117,7 @@ class ConciergeBot:
         add users to the rooms
         show message
         """
+
         for users_in_task in self.tasks.values():
             for user_id, task_id in users_in_task.items():
                 await self.sio.emit(
@@ -237,7 +240,12 @@ class ConciergeBot:
         await self.sio.emit(
             "text",
             {
-                "message": f"### Hello, {user_name}!\n\n",
+                "message": f"## Hello, {user_name}!\n\n"
+                + (
+                    f"### We are waiting for {self.number_users_in_room_missing} user(s) to join before we continue"
+                    if self.number_users_in_room_missing > 0
+                    else ""
+                ),
                 "receiver_id": user_id,
                 "room": room,
                 "html": True,
@@ -245,30 +253,21 @@ class ConciergeBot:
             callback=self.message_callback,
         )
 
-        print(
-            "CONCIERGE", len(self.tasks[task_id]), repr(task["num_users"]), flush=True
-        )
-        if len(self.tasks[task_id]) != task["num_users"]:
-            n_missing = int(task["num_users"]) - len(self.tasks[task_id])
-            await self.sio.emit(
-                "text",
-                {
-                    "message": (
-                        f"### Hello, {user_name}!\n\n"
-                        f"We are waiting for {n_missing} user(s) to join before we continue"
-                    ),
-                    "receiver_id": user_id,
-                    "room": room,
-                    "html": True,
-                },
-                callback=self.message_callback,
-            )
+        if self.number_users_in_room_missing > 0:
             return
 
-        # list cast necessary because the dictionary is actively altered
-        # due to parallely received "leave" events
+        try:
+            print("SETUP ROOM", flush=True)
+            chat_room_id, _ = await setup_chat_room(
+                self.uri, self.api_token, self.num_users, self.chat_room_timeout_seconds
+            )
+            print("REGISTER CHATBOT", flush=True)
+            await self.setup_and_register_chatbot(chat_room_id)
+        except:
+            import traceback
 
-        await self.setup_and_register_chatbot()
+            traceback.print_exc()
+            raise
 
         await asyncio.sleep(1)
 
@@ -287,12 +286,12 @@ class ConciergeBot:
 
         user_ids = sorted(self.tasks[task_id].keys())
         for user_id in user_ids:
-            await self.redirect_user(user_id, task_id, self.chat_room_id)
+            await self.redirect_user(user_id, task_id, chat_room_id)
 
         del self.tasks[task_id]
         await self.disconnect()
 
-    async def setup_and_register_chatbot(self):
+    async def setup_and_register_chatbot(self, chat_room_id):
         permissions = {
             "api": True,
             "send_html_message": True,
@@ -301,7 +300,7 @@ class ConciergeBot:
         }
         permissions_id = await set_permissions(self.uri, self.api_token, permissions)
         bot_token = await create_room_token(
-            self.uri, self.api_token, permissions_id, self.chat_room_id, None, None
+            self.uri, self.api_token, permissions_id, chat_room_id, None, None
         )
 
         bot_user = await create_user(self.uri, self.api_token, self.bot_name, bot_token)
@@ -313,8 +312,9 @@ class ConciergeBot:
                     bot_user=bot_user,
                     bot_name=self.bot_name,
                     api_token=self.api_token,
-                    chat_room_id=self.chat_room_id,
+                    chat_room_id=chat_room_id,
                     bot_ids=self.bot_ids,
+                    num_users=self.num_users,
                 ),
             ) as r:
                 r.raise_for_status()

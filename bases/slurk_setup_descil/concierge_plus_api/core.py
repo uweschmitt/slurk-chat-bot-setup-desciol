@@ -21,8 +21,6 @@ _async_tasks = dict()
 @routes.post("/register")
 async def register(request):
     concierge_config = await request.json()
-    for p in asyncio.all_tasks():
-        print("REST HANDLER", p, flush=True)
     print("-------")
     print("CONFIG", concierge_config, flush=True)
     print("-------")

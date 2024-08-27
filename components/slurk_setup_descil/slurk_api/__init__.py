@@ -11,10 +11,12 @@ from slurk_setup_descil.slurk_api.core import (
     post,
     redirect_user,
     set_permissions,
+    setup_chat_room,
 )
 
 __all__ = [
     "create_forward_room",
+    "setup_chat_room",
     "create_layout",
     "create_room",
     "create_room_token",

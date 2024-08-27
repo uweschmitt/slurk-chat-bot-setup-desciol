@@ -27,6 +27,7 @@ class Chatbot:
         self.api_token = config["api_token"]
         self.bot_user = config["bot_user"]
         self.chat_room_id = int(config["chat_room_id"])
+        self.num_users = config["num_users"]
 
         self.uri = host
         if port is not None:
@@ -54,23 +55,34 @@ class Chatbot:
         @self.sio.event
         async def status(data):
             print("STATUS", data, flush=True)
+
+            if data["type"] == "leave":
+                await self.sio.emit(
+                    "text",
+                    {
+                        "message": "user left",
+                        "room": self.chat_room_id,
+                        "html": True,
+                        "broadcast": True,
+                    },
+                )
+                print("SENT MESSAGE about user leaving", self.chat_room_id, flush=True)
+                return
+
             if data["type"] != "join":
                 return
 
-            print(data["room"], repr(self.chat_room_id))
             if data["room"] != self.chat_room_id:
-                print("IGNORE")
                 return
 
             user = data["user"]
             user_id = user["id"]
 
-            print("JOIN", user_id, "BOT IS", self.bot_user)
+            if user_id != self.bot_user:
+                self.players_per_room.append({"msg_n": 0, "status": "ready", **user})
 
-            if user_id == self.bot_user:
-                print("BOT SLEEPS", flush=True)
-                await asyncio.sleep(1.0 + random.random() * 5)
-                print("BOT SLEPT", flush=True)
+            if len(self.players_per_room) == self.num_users:
+                await asyncio.sleep(1.0 + random.random())
                 for line in TASK_GREETING:
                     print(line, flush=True)
                     await self.sio.emit(
@@ -79,12 +91,9 @@ class Chatbot:
                             "message": line,
                             "room": self.chat_room_id,
                             "html": True,
-                            "broadcast": False,
                         },
                     )
                     await asyncio.sleep(0.5 + random.random() * 0.5)
-
-            self.players_per_room.append({"msg_n": 0, "status": "ready", **user})
 
         @self.sio.event
         async def text_message(data):
@@ -94,20 +103,16 @@ class Chatbot:
             If encountering something that looks like a command
             then pass it on to be parsed as such.
             """
-            LOG.debug(f"Received a message from {data['user']['name']}.")
-            print(f"Received a message from {data['user']['name']}.")
-
-            room_id = data["room"]
             user_id = data["user"]["id"]
-            if room_id not in self.message_history:
-                self.message_history[room_id] = []
 
-            print(repr(user_id), repr(self.bot_user), flush=True)
+            # avoid ciruclar calls!
             if user_id == self.bot_user:
                 return
 
-            print("TEXT MESSAGE", data)
-            print(self.players_per_room, flush=True)
+            print("TEXT MESSAGE", user_id, self.bot_user, data, flush=True)
+            room_id = data["room"]
+            if room_id not in self.message_history:
+                self.message_history[room_id] = []
 
             # if the message is part of the main discussion count it
             for usr in self.players_per_room:
@@ -131,6 +136,7 @@ class Chatbot:
             logging.debug(f"Got text: {user_message}")
 
             logging.debug(f"Answering with: {answer}")
+            return
 
             await self.sio.emit(
                 "text",
@@ -160,24 +166,3 @@ class Chatbot:
         )
         await asyncio.sleep(TIME_CLOSE * 2 * 60)
         await self.room_to_read_only(room_id)
-
-    async def room_to_read_only(self, room_id):
-        """Set room to read only."""
-
-        """
-        response = requests.patch(
-            f"{self.uri}/rooms/{room_id}/attribute/id/text",
-            json={"attribute": "readonly", "value": "True"},
-            headers={"Authorization": f"Bearer {self.token}"},
-        )
-        # self.request_feedback(response, "set room to read_only")
-
-        response = requests.patch(
-            f"{self.uri}/rooms/{room_id}/attribute/id/text",
-            json={"attribute": "placeholder", "value": "This room is read-only"},
-            headers={"Authorization": f"Bearer {self.token}"},
-        )
-        # self.request_feedback(response, "inform user that room is read_only")
-
-        """
-        pass

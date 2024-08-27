@@ -14,7 +14,6 @@ async def setup_and_register_concierge(
     concierge_url,
     api_token,
     waiting_room_id,
-    chat_room_id,
     bot_ids,
     waiting_room_timeout_url,
     waiting_room_timeout_seconds,
@@ -39,7 +38,6 @@ async def setup_and_register_concierge(
                 concierge_token=concierge_token,
                 concierge_user=concierge_user,
                 waiting_room_id=waiting_room_id,
-                chat_room_id=chat_room_id,
                 bot_ids=bot_ids,
                 waiting_room_timeout_url=waiting_room_timeout_url,
                 waiting_room_timeout_seconds=waiting_room_timeout_seconds,
@@ -60,14 +58,6 @@ async def setup_waiting_room(uri, api_token, n_users, timeout_seconds):
     )
 
     return waiting_room_id, waiting_room_task_id
-
-
-async def setup_chat_room(uri, api_token, n_users, timeout_seconds):
-    chat_layout_id = await create_layout(uri, api_token, chat_layout(timeout_seconds))
-    chat_room_id = await create_room(uri, api_token, chat_layout_id)
-    chat_task_id = await create_task(uri, api_token, chat_layout_id, n_users, "Room")
-
-    return chat_room_id, chat_task_id
 
 
 async def create_waiting_room_tokens(uri, api_token, waiting_room_id, task_id, n_users):
@@ -124,7 +114,7 @@ def chat_layout(timeout_seconds):
             "print-history": "plain-history",
         },
         "css": {
-            "header, footer": {"background": "#11915E"},
+            "header, footer": {"background": "#11915E", "color": "#eee"},
             "#timeout-message": {"margin": "2em"},
         },
         "html": [
@@ -181,6 +171,17 @@ def chat_layout(timeout_seconds):
             }};
             socket.on('status', status_descil);
 
+            window.addEventListener("beforeunload", function (e) {{
+                console.log(e);
+                var confirmationMessage = "Do you really want to close the chat?";
+                (e || window.event).returnValue = confirmationMessage; //Gecko + IE
+                return confirmationMessage;                            //Webkit, Safari, Chrome
+            }});
+
+            window.addEventListener("unload", function (e) {{
+                socket.emit("left_room", {{ 'user': self_user['id'], 'room': self_room }});
+                console.log(e);
+            }});
             """,
             },
         ],
