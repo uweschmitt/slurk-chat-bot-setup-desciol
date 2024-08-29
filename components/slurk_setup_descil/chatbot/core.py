@@ -150,14 +150,7 @@ class Chatbot:
             )
 
             print("EMITTED start_typing", flush=True)
-            await self.sio.emit(
-                "start_typing",
-                {
-                    "user": {"id": self.bot_user, "name": "Chatbot"},
-                    "room": self.chat_room_id,
-                },
-                room=str(self.chat_room_id),
-            )
+            await self.sio.emit("keypress", dict(typing=True))
 
             async def finish_reply():
                 try:
@@ -193,13 +186,7 @@ class Chatbot:
                 print("WORDS", num_words, "SLEEP", sleep_in_seconds, flush=True)
                 await asyncio.sleep(sleep_in_seconds)
                 print("DONE SLEEPING", answer, flush=True)
-                await self.sio.emit(
-                    "stop_typing",
-                    {
-                        "user": {"id": self.bot_user, "name": "Chatbot"},
-                        "room": self.chat_room_id,
-                    },
-                )
+                await self.sio.emit("keypress", dict(typing=False))
                 print("EMMITED STOP TYOPING", flush=True)
 
                 await self.sio.emit(

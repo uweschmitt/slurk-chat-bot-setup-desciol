@@ -297,6 +297,7 @@ class ConciergeBot:
         permissions = {
             "api": True,
             "send_html_message": True,
+            "send_message": True,
             "send_privately": True,
             "broadcast": True,
         }
