@@ -259,7 +259,7 @@ class ConciergeBot:
         try:
             print("SETUP ROOM", flush=True)
             chat_room_id, _ = await setup_chat_room(
-                self.uri, self.api_token, self.num_users, self.chat_room_timeout_seconds
+                self.uri, self.api_token, self.num_users
             )
             print("REGISTER MANAGERBOT", flush=True)
             await self.setup_and_register_managerbot(chat_room_id)

@@ -192,86 +192,29 @@ async def add_user_to_room(slurk_uri, token, user_id, room_id):
         return response.headers["ETag"]
 
 
-async def setup_chat_room(uri, api_token, n_users, timeout_seconds):
-    chat_layout_id = await create_layout(uri, api_token, chat_layout(timeout_seconds))
+async def setup_chat_room(uri, api_token, n_users):
+    chat_layout_id = await create_layout(uri, api_token, CHAT_LAYOUT)
     chat_room_id = await create_room(uri, api_token, chat_layout_id)
     chat_task_id = await create_task(uri, api_token, chat_layout_id, n_users, "Room")
     return chat_room_id, chat_task_id
 
 
-def chat_layout(timeout_seconds):
-    return {
-        "title": "Room",
-        "scripts": {
-            "incoming-text": "display-text",
-            "incoming-image": "display-image",
-            "submit-message": "send-message",
-            "print-history": "plain-history",
-            "typing-users": "typing-users",
-        },
-        "css": {
-            "header, footer": {"background": "#115E91"},
-            "#current-users": {"color": "#EEE!important"},
-            "#timeout-message": {"margin": "2em"},
-            "#text": {"padding-top": "0.5em!important"},
-        },
-        "html": [
-            {"layout-type": "div", "id": "timeout-message", "layout-content": "&nbsp;"},
-            {
-                "layout-type": "script",
-                "id": "",
-                "layout-content": f"""
-
-            first_user_joined_at = null;
-
-            function update_message() {{
-                if (first_user_joined_at == null) return;
-                now = new Date().getTime();
-                running = (now - first_user_joined_at) / 1000; // ms to s
-                left = Math.round({timeout_seconds} - running);
-
-                if (left < 0) {{
-                    $("#timeout-message")[0].textContent = "";
-                    return;
-                }}
-
-                seconds = left % 60;
-                minutes = Math.floor(left / 60);
-
-                if (minutes == 0)  {{
-                    left_str = seconds + ' seconds';
-                }}
-                else if (minutes == 1) {{
-                    left_str = '1 minute, ' + seconds + ' seconds';
-                }}
-                else {{
-                    left_str = minutes + ' minutes, ' + seconds + ' seconds';
-                }}
-                message = 'THIS ROOM WILL CLOSE IN ' + left_str;
-                $("#timeout-message")[0].textContent = message;
-            }}
-
-            status_descil = function(data) {{
-                if (data['type'] != 'join') return;
-
-                console.log(data);
-
-                if (first_user_joined_at == null) {{
-                    first_user_joined_at = new Date().getTime();
-                }}
-                console.log("JOINED", first_user_joined_at);
-                update_message();
-                setInterval(update_message, 3000);  // repeat every 5 seconds
-            }};
-            socket.on('status', status_descil);
-
-            $("#text").focus();
-
-            window.addEventListener("unload", function (e) {{
-                socket.emit("left_room", {{ 'user': self_user['id'], 'room': self_room }});
-            }});
-            """,
-            },
-        ],
-        "show_latency": False,
-    }
+CHAT_LAYOUT = {
+    "title": "Room",
+    "scripts": {
+        "incoming-text": "display-text",
+        "incoming-image": "display-image",
+        "submit-message": "send-message",
+        "print-history": "plain-history",
+        "typing-users": "typing-users",
+    },
+    "css": {
+        "header, footer": {"background": "#115E91"},
+        "#current-users": {"color": "#EEE!important"},
+        "#timeout-message": {"margin": "2em"},
+        "#text": {"padding-top": "0.5em!important"},
+        "#content": {"min-width": "100%!important"},
+        "#sidebar": {"display": "none"},
+    },
+    "show_latency": False,
+}
