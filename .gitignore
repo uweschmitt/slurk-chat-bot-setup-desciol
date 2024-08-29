@@ -5,3 +5,6 @@ dist
 *.pyo
 *.pyd
 __pypcache__
+
+ai_credentials.txt
+env.py

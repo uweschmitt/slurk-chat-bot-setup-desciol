@@ -7,6 +7,7 @@ import asyncio
 import logging
 import os
 import random
+import time
 
 import socketio
 
@@ -15,6 +16,9 @@ from .interaction import generate_bot_message
 
 LOG = logging.getLogger(__name__)
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+current_task = None
 
 
 class Chatbot:
@@ -26,6 +30,7 @@ class Chatbot:
         self.bot_token = config["bot_token"]
         self.api_token = config["api_token"]
         self.bot_user = config["bot_user"]
+        self.bot_id = config["bot_ids"][0]
         self.chat_room_id = int(config["chat_room_id"])
         self.num_users = config["num_users"]
 
@@ -66,6 +71,20 @@ class Chatbot:
                         "broadcast": True,
                     },
                 )
+                self.num_users -= 1
+                if self.num_users == 0:
+                    await self.sio.disconnect()
+
+                    await self.sio.emit(
+                        "room_closed",
+                        {
+                            "message": "room_closed",
+                            "room": self.chat_room_id,
+                        },
+                    )
+                    print("CLOSED CHAT ROOM", flush=True)
+                    return
+
                 print("SENT MESSAGE about user leaving", self.chat_room_id, flush=True)
                 return
 
@@ -82,7 +101,6 @@ class Chatbot:
                 self.players_per_room.append({"msg_n": 0, "status": "ready", **user})
 
             if len(self.players_per_room) == self.num_users:
-                await asyncio.sleep(1.0 + random.random())
                 for line in TASK_GREETING:
                     print(line, flush=True)
                     await self.sio.emit(
@@ -105,11 +123,15 @@ class Chatbot:
             """
             user_id = data["user"]["id"]
 
-            # avoid ciruclar calls!
-            if user_id == self.bot_user:
+            if data["room"] != self.chat_room_id:
                 return
 
-            print("TEXT MESSAGE", user_id, self.bot_user, data, flush=True)
+            print("USER", user_id, self.bot_user)
+            # avoid ciruclar calls!
+            if user_id == self.bot_user:
+                print("COMES FROM BOT, SKIP", flush=True)
+                return
+
             room_id = data["room"]
             if room_id not in self.message_history:
                 self.message_history[room_id] = []
@@ -127,27 +149,76 @@ class Chatbot:
                 {"sender": data["user"]["name"], "text": user_message}
             )
 
-            # feed message to language model and get response
-            answer = await generate_bot_message(self.message_history[room_id])
-            if answer is None:
-                logging.debug("Not answering due to no answer!")
-                return
-            self.message_history[room_id].append({"sender": "Ash", "text": answer})
-            logging.debug(f"Got text: {user_message}")
-
-            logging.debug(f"Answering with: {answer}")
-            return
-
+            print("EMITTED start_typing", flush=True)
             await self.sio.emit(
-                "text",
+                "start_typing",
                 {
-                    "message": answer,
-                    "receiver_id": user_id,
-                    "html": True,
-                    "room": room_id,
-                    "broadcast": True,
+                    "user": {"id": self.bot_user, "name": "Chatbot"},
+                    "room": self.chat_room_id,
                 },
+                room=str(self.chat_room_id),
             )
+
+            async def finish_reply():
+                try:
+                    await _finish_reply()
+                except asyncio.CancelledError:
+                    print("CANCELLATIN HAPPENED", flush=True)
+                    pass
+
+            async def _finish_reply():
+                started = time.time()
+                # feed message to language model and get response
+                try:
+                    answer = await generate_bot_message(
+                        self.bot_id, self.message_history[room_id], room_id
+                    )
+                except:  # noqa
+                    import traceback  # noqa
+
+                    traceback.print_exc()
+                    raise
+                if answer is None:
+                    logging.debug("Not answering due to no answer!")
+                    return
+
+                needed = time.time() - started
+                self.message_history[room_id].append({"sender": "Ash", "text": answer})
+                logging.debug(f"Answering with: {answer}")
+                print("ANSWER", answer, flush=True)
+
+                num_words = len(answer.split(" "))
+                # average 50 words per minute typing speed (is usually between 40 and 60):
+                sleep_in_seconds = num_words / 50 * 60 - needed
+                print("WORDS", num_words, "SLEEP", sleep_in_seconds, flush=True)
+                await asyncio.sleep(sleep_in_seconds)
+                print("DONE SLEEPING", answer, flush=True)
+                await self.sio.emit(
+                    "stop_typing",
+                    {
+                        "user": {"id": self.bot_user, "name": "Chatbot"},
+                        "room": self.chat_room_id,
+                    },
+                )
+                print("EMMITED STOP TYOPING", flush=True)
+
+                await self.sio.emit(
+                    "text",
+                    {
+                        "message": answer,
+                        "receiver_id": user_id,
+                        "html": True,
+                        "room": room_id,
+                        "broadcast": True,
+                    },
+                )
+
+            global current_task
+            if current_task is not None:
+                print("CANCEL TASK", current_task)
+                current_task.cancel()
+                print("CANCELLED")
+            current_task = asyncio.create_task(finish_reply())
 
     async def close_game(self, room_id):
         """Erase any data structures no longer necessary."""

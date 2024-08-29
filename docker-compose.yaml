@@ -29,11 +29,30 @@ services:
     - "SLURK_HOST=http://slurk"
     - "SLURK_PORT=80"
     - "PYTHONASYNCIODEBUG=1"
+    - "PYTHONUNBUFFERED=1"
     - "CHATBOT_URL=http://chatbot:84"
+    - "MANAGERBOT_URL=http://managerbot:85"
 
   chatbot:
     build:
       context: ./projects/chatbot/
+    environment:
+    - "SLURK_HOST=http://slurk"
+    - "SLURK_PORT=80"
+    - "PYTHONASYNCIODEBUG=1"
+    - "PYTHONUNBUFFERED=1"
+    - "AZURE_OPENAI_ENDPOINT=https://css-openai.openai.azure.com/"
+    - "AZURE_OPENAI_API_KEY=***REMOVED***"
+    - "AZURE_OPENAI_API_VERSION=2023-12-01-preview"
+    - "AZURE_OPENAI_MODEL=css-openai-gpt35"
+    - "AZURE_OPENAI_MODEL_TEMPERATURE=0.9"
+    - "AZURE_OPENAI_MODEL_MAX_TOKENS=80"
+    - "POLYBOX_URL=https://polybox.ethz.ch/index.php/s/MAZlGw1ZPBFYUJn/download"
+    - "PROMPT_API_URL=https://slurkexp.vlab.ethz.ch/api/fullprompt/"
+
+  managerbot:
+    build:
+      context: ./projects/managerbot/
     environment:
     - "http_proxy="
     - "https_proxy="
@@ -42,9 +61,7 @@ services:
     - "SLURK_HOST=http://slurk"
     - "SLURK_PORT=80"
     - "PYTHONASYNCIODEBUG=1"
-    - "OPENAI_API_KEY=xxx"
-    ports:
-    - "8790:84"
+    - "PYTHONUNBUFFERED=1"
 
   slurk:
     image: slurk # registry.ethz.ch/sis/slurk-descil:slurk-descil

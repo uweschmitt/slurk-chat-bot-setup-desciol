@@ -21,6 +21,7 @@ LOG.setLevel(logging.DEBUG)
 _async_tasks = dict()
 
 CHATBOT_URL = os.environ.get("CHATBOT_URL", "http://localhost:84")
+MANAGERBOT_URL = os.environ.get("MANAGERBOT_URL", "http://localhost:84")
 
 
 class ConciergeBot:
@@ -46,13 +47,12 @@ class ConciergeBot:
         self.timeout = config["waiting_room_timeout_seconds"]
         self.user_tokens = config["user_tokens"]
         self.chat_room_timeout_seconds = config["chat_room_timeout_seconds"]
+        self.chat_room_timeout_url = config["chat_room_timeout_url"]
 
         self.num_users = len(self.user_tokens)
         self.number_users_in_room_missing = self.num_users
         self.timeout_manager_active = False
         self.room_timeout_happened = False
-
-        self.bot_name = "Bot"
 
         self.tasks = dict()
         self.uri = host
@@ -261,6 +261,8 @@ class ConciergeBot:
             chat_room_id, _ = await setup_chat_room(
                 self.uri, self.api_token, self.num_users, self.chat_room_timeout_seconds
             )
+            print("REGISTER MANAGERBOT", flush=True)
+            await self.setup_and_register_managerbot(chat_room_id)
             print("REGISTER CHATBOT", flush=True)
             await self.setup_and_register_chatbot(chat_room_id)
         except:
@@ -303,17 +305,53 @@ class ConciergeBot:
             self.uri, self.api_token, permissions_id, chat_room_id, None, None
         )
 
-        bot_user = await create_user(self.uri, self.api_token, self.bot_name, bot_token)
+        bot_name = "ChatBot"
+
+        bot_user = await create_user(self.uri, self.api_token, bot_name, bot_token)
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{CHATBOT_URL}/register",
                 json=dict(
                     bot_token=bot_token,
                     bot_user=bot_user,
-                    bot_name=self.bot_name,
+                    bot_name=bot_name,
                     api_token=self.api_token,
                     chat_room_id=chat_room_id,
                     bot_ids=self.bot_ids,
+                    num_users=self.num_users,
+                ),
+            ) as r:
+                r.raise_for_status()
+                print(r)
+
+    async def setup_and_register_managerbot(self, chat_room_id):
+        permissions = {
+            "api": True,
+            "send_html_message": True,
+            "send_privately": True,
+            "broadcast": True,
+        }
+        permissions_id = await set_permissions(self.uri, self.api_token, permissions)
+        bot_token = await create_room_token(
+            self.uri, self.api_token, permissions_id, chat_room_id, None, None
+        )
+
+        bot_name = "Manager"
+
+        bot_user = await create_user(self.uri, self.api_token, bot_name, bot_token)
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{MANAGERBOT_URL}/register",
+                json=dict(
+                    api_token=self.api_token,
+                    bot_token=bot_token,
+                    bot_user=bot_user,
+                    bot_name=bot_name,
+                    chat_room_id=chat_room_id,
+                    bot_ids=self.bot_ids,
+                    chat_room_timeout_url=self.chat_room_timeout_url,
+                    chat_room_timeout_seconds=self.chat_room_timeout_seconds,
                     num_users=self.num_users,
                 ),
             ) as r:

@@ -12,6 +12,6 @@ ENTRYPOINT ["/venv/bin/gunicorn",\
             "--error-logfile", "-",\
             "--capture-output",\
             "--access-logfile", "-",\
-            "-b", "0.0.0.0:84",\
+            "-b", "0.0.0.0:85",\
             "--worker-class", "aiohttp.GunicornWebWorker",\
-            "slurk_setup_descil.chatbot_api:app"]
+            "slurk_setup_descil.managerbot_api:app"]

@@ -207,6 +207,7 @@ def chat_layout(timeout_seconds):
             "incoming-image": "display-image",
             "submit-message": "send-message",
             "print-history": "plain-history",
+            "typing-users": "typing-users",
         },
         "css": {
             "header, footer": {"background": "#115E91"},
