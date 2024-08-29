@@ -73,8 +73,6 @@ class Chatbot:
                 )
                 self.num_users -= 1
                 if self.num_users == 0:
-                    await self.sio.disconnect()
-
                     await self.sio.emit(
                         "room_closed",
                         {
@@ -82,6 +80,8 @@ class Chatbot:
                             "room": self.chat_room_id,
                         },
                     )
+                    await self.sio.disconnect()
+
                     print("CLOSED CHAT ROOM", flush=True)
                     return
 
