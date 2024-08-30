@@ -208,6 +208,15 @@ CHAT_LAYOUT = {
         "print-history": "plain-history",
         "typing-users": "typing-users",
     },
+    "html": [
+        {
+            "layout-type": "script",
+            "id": "",
+            "layout-content": """
+                 $("#text").focus();
+    """,
+        },
+    ],
     "css": {
         "header, footer": {"background": "#115E91"},
         "#current-users": {"color": "#EEE!important"},
