@@ -35,7 +35,7 @@ async def http_exception_handler(request: Request, exc: Exception):
 
 
 class SetupData(BaseModel):
-    n_users: int = 2
+    num_users: int = 2
     bot_ids: List[int] = [
         1,
     ]
@@ -43,54 +43,63 @@ class SetupData(BaseModel):
     waiting_room_timeout_seconds: int = 5
     chat_room_timeout_url: str = "https://sis.id.ethz.ch"
     chat_room_timeout_seconds: int = 20
+    chat_room_dropout_url: str = "https://sis.id.ethz.ch"
+    min_num_users_chat_room: int = 1
     api_token: str
 
 
 @app.post("/setup")
 async def setup(setup_data: SetupData):
     """
-    setup an experiment with *n_users* using a bot *bot_id*.
+    setup an experiment with *num_users* using a bot *bot_id*.
     """
     api_token = await get_api_token()
     submittted_api_token = setup_data.api_token
     if api_token != submittted_api_token:
         raise HTTPException(status_code=401, detail="api token invalid.")
 
-    n_users = setup_data.n_users
+    num_users = setup_data.num_users
     bot_ids = setup_data.bot_ids
     waiting_room_timeout_url = setup_data.waiting_room_timeout_url
     waiting_room_timeout_seconds = setup_data.waiting_room_timeout_seconds
     chat_room_timeout_url = setup_data.chat_room_timeout_url
     chat_room_timeout_seconds = setup_data.chat_room_timeout_seconds
-
-    print("TOKEN", api_token, flush=True)
+    min_num_users_chat_room = setup_data.min_num_users_chat_room
+    chat_room_dropout_url = setup_data.chat_room_dropout_url
 
     slurk_url = f"{SLURK_HOST}:{SLURK_PORT}"
+    setup = setup_data.model_dump(mode="json")
 
     waiting_room_id, waiting_room_task_id = await setup_waiting_room(
         slurk_url,
         api_token,
-        n_users,
+        num_users,
         chat_room_timeout_seconds,
     )
 
     user_tokens = await create_waiting_room_tokens(
-        slurk_url, api_token, waiting_room_id, waiting_room_task_id, n_users
+        slurk_url, api_token, waiting_room_id, waiting_room_task_id, num_users
     )
 
     request_id = uuid.uuid1().hex
+
+    setup = dict(
+        waiting_room_id=waiting_room_id,
+        waiting_room_timeout_seconds=waiting_room_timeout_seconds,
+        waiting_room_timeout_url=waiting_room_timeout_url,
+        chat_room_timeout_url=chat_room_timeout_url,
+        chat_room_timeout_seconds=chat_room_timeout_seconds,
+        min_num_users_chat_room=min_num_users_chat_room,
+        chat_room_dropout_url=chat_room_dropout_url,
+        num_users=num_users,
+        bot_ids=bot_ids,
+        api_token=api_token,
+    )
+
     await setup_and_register_concierge(
         slurk_url,
         CONCIERGE_URL,
-        api_token,
-        waiting_room_id,
-        bot_ids,
-        waiting_room_timeout_url,
-        waiting_room_timeout_seconds,
-        chat_room_timeout_url,
-        chat_room_timeout_seconds,
-        n_users,
-        user_tokens,
+        setup,
         "Concierge",
     )
 

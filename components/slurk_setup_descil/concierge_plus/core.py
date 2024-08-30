@@ -25,32 +25,35 @@ MANAGERBOT_URL = os.environ.get("MANAGERBOT_URL", "http://localhost:84")
 
 
 class ConciergeBot:
-    def __init__(self, config, host, port):
+    def __init__(self, setup, host, port):
         """This bot lists users joining a designated
         waiting room and sends a group of users to a task room
         as soon as the minimal number of users needed for the
         task is reached.
 
-        :param config: configuration dict from REST endpoint
+        :param setup: configuration dict from REST endpoint
         :param host: Full URL including protocol and hostname.
         :type host: str
         :param port: Port used by the slurk chat server.
         :type port: int
         """
 
-        self.api_token = config["api_token"]
-        self.concierge_token = config["concierge_token"]
-        self.concierge_user = config["concierge_user"]
-        self.waiting_room_id = config["waiting_room_id"]
-        self.bot_ids = config["bot_ids"]
-        self.redirect_url = config["waiting_room_timeout_url"]
-        self.timeout = config["waiting_room_timeout_seconds"]
-        self.user_tokens = config["user_tokens"]
-        self.chat_room_timeout_seconds = config["chat_room_timeout_seconds"]
-        self.chat_room_timeout_url = config["chat_room_timeout_url"]
+        self.setup = setup
+        print("SETUP", setup, flush=True)
 
-        self.num_users = len(self.user_tokens)
-        self.number_users_in_room_missing = self.num_users
+        self.api_token = setup["api_token"]
+        self.concierge_token = setup["concierge_token"]
+        self.concierge_user = setup["concierge_user"]
+        self.waiting_room_id = setup["waiting_room_id"]
+        self.bot_ids = setup["bot_ids"]
+        self.redirect_url = setup["waiting_room_timeout_url"]
+        self.timeout = setup["waiting_room_timeout_seconds"]
+        self.num_users = setup["num_users"]
+        self.chat_room_timeout_seconds = setup["chat_room_timeout_seconds"]
+        self.chat_room_timeout_url = setup["chat_room_timeout_url"]
+        self.min_num_users_chat_room = setup["min_num_users_chat_room"]
+
+        self.num_users_in_room_missing = self.num_users
         self.timeout_manager_active = False
         self.room_timeout_happened = False
 
@@ -85,7 +88,7 @@ class ConciergeBot:
     async def timeout_manager(self):
         started = time.time()
         while time.time() < started + self.timeout:
-            if self.number_users_in_room_missing <= 0:
+            if self.num_users_in_room_missing <= 0:
                 print("ROOM COMPLETE!", flush=True)
                 return
             await asyncio.sleep(0.5)
@@ -231,7 +234,7 @@ class ConciergeBot:
             f"TASK_ID {task_id}   NUM_USERS {task['num_users']}  TASKS {self.tasks}"
         )
 
-        self.number_users_in_room_missing -= 1
+        self.num_users_in_room_missing -= 1
         if not self.timeout_manager_active:
             t = asyncio.create_task(self.timeout_manager())
             _async_tasks[id(t)] = t
@@ -242,8 +245,8 @@ class ConciergeBot:
             {
                 "message": f"## Hello, {user_name}!\n\n"
                 + (
-                    f"### We are waiting for {self.number_users_in_room_missing} user(s) to join before we continue"
-                    if self.number_users_in_room_missing > 0
+                    f"### We are waiting for {self.num_users_in_room_missing} user(s) to join before we continue"
+                    if self.num_users_in_room_missing > 0
                     else ""
                 ),
                 "receiver_id": user_id,
@@ -253,7 +256,7 @@ class ConciergeBot:
             callback=self.message_callback,
         )
 
-        if self.number_users_in_room_missing > 0:
+        if self.num_users_in_room_missing > 0:
             return
 
         try:
@@ -309,21 +312,20 @@ class ConciergeBot:
         bot_name = "ChatBot"
 
         bot_user = await create_user(self.uri, self.api_token, bot_name, bot_token)
+
+        setup = self.setup.copy()
+        setup.update(
+            chatbot_user=bot_user,
+            chatbot_token=bot_token,
+            chat_room_id=chat_room_id,
+        )
+
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{CHATBOT_URL}/register",
-                json=dict(
-                    bot_token=bot_token,
-                    bot_user=bot_user,
-                    bot_name=bot_name,
-                    api_token=self.api_token,
-                    chat_room_id=chat_room_id,
-                    bot_ids=self.bot_ids,
-                    num_users=self.num_users,
-                ),
+                json=setup,
             ) as r:
                 r.raise_for_status()
-                print(r)
 
     async def setup_and_register_managerbot(self, chat_room_id):
         permissions = {
@@ -341,20 +343,17 @@ class ConciergeBot:
 
         bot_user = await create_user(self.uri, self.api_token, bot_name, bot_token)
 
+        setup = self.setup.copy()
+        setup.update(
+            managerbot_user=bot_user,
+            managerbot_token=bot_token,
+            chat_room_id=chat_room_id,
+        )
+
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{MANAGERBOT_URL}/register",
-                json=dict(
-                    api_token=self.api_token,
-                    bot_token=bot_token,
-                    bot_user=bot_user,
-                    bot_name=bot_name,
-                    chat_room_id=chat_room_id,
-                    bot_ids=self.bot_ids,
-                    chat_room_timeout_url=self.chat_room_timeout_url,
-                    chat_room_timeout_seconds=self.chat_room_timeout_seconds,
-                    num_users=self.num_users,
-                ),
+                json=setup,
             ) as r:
                 r.raise_for_status()
                 print(r)

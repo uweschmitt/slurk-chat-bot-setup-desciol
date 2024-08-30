@@ -12,61 +12,55 @@ from slurk_setup_descil.slurk_api import (
 async def setup_and_register_concierge(
     uri,
     concierge_url,
-    api_token,
-    waiting_room_id,
-    bot_ids,
-    waiting_room_timeout_url,
-    waiting_room_timeout_seconds,
-    chat_room_timeout_url,
-    chat_room_timeout_seconds,
-    n_users,
-    user_tokens,
+    setup,
     name,
 ):
+    api_token = setup["api_token"]
     permissions_id = await set_permissions(uri, api_token, CONCIERGE_PERMISSIONS)
     concierge_token = await create_room_token(
-        uri, api_token, permissions_id, waiting_room_id, None, None
+        uri, api_token, permissions_id, setup["waiting_room_id"], None, None
     )
 
     concierge_user = await create_user(uri, api_token, name, concierge_token)
+    setup["concierge_token"] = concierge_token
+    setup["concierge_user"] = concierge_user
 
     async with aiohttp.ClientSession() as session:
         async with session.post(
             f"{concierge_url}/register",
-            json=dict(
-                api_token=api_token,
-                concierge_token=concierge_token,
-                concierge_user=concierge_user,
-                waiting_room_id=waiting_room_id,
-                bot_ids=bot_ids,
-                waiting_room_timeout_url=waiting_room_timeout_url,
-                waiting_room_timeout_seconds=waiting_room_timeout_seconds,
-                user_tokens=user_tokens,
-                chat_room_timeout_url=chat_room_timeout_url,
-                chat_room_timeout_seconds=chat_room_timeout_seconds,
-            ),
+            json=setup,
         ) as r:
             r.raise_for_status()
             print(r)
 
 
-async def setup_waiting_room(uri, api_token, n_users, timeout_seconds):
+async def setup_waiting_room(uri, api_token, num_users, timeout_seconds):
     waiting_room_layout_id = await create_layout(uri, api_token, WAITING_ROOM_LAYOUT)
     waiting_room_id = await create_room(uri, api_token, waiting_room_layout_id)
+    print(
+        "XXX",
+        repr(uri),
+        repr(api_token),
+        repr(waiting_room_layout_id),
+        repr(num_users),
+        flush=True,
+    )
     waiting_room_task_id = await create_task(
-        uri, api_token, waiting_room_layout_id, n_users, "Waiting Room"
+        uri, api_token, waiting_room_layout_id, num_users, "Waiting Room"
     )
 
     return waiting_room_id, waiting_room_task_id
 
 
-async def create_waiting_room_tokens(uri, api_token, waiting_room_id, task_id, n_users):
+async def create_waiting_room_tokens(
+    uri, api_token, waiting_room_id, task_id, num_users
+):
     permissions_id = await set_permissions(uri, api_token, MESSAGE_PERMISSIONS)
     return [
         await create_room_token(
-            uri, api_token, permissions_id, waiting_room_id, task_id, n_users
+            uri, api_token, permissions_id, waiting_room_id, task_id, num_users
         )
-        for _ in range(n_users)
+        for _ in range(num_users)
     ]
 
 

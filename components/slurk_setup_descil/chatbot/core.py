@@ -8,6 +8,7 @@ import logging
 import os
 import random
 import time
+from pprint import pprint
 
 import socketio
 
@@ -27,9 +28,11 @@ class Chatbot:
         :param task: Task ID
         :type task: str
         """
-        self.bot_token = config["bot_token"]
+        pprint(config)
+        print(flush=True)
+        self.bot_token = config["chatbot_token"]
         self.api_token = config["api_token"]
-        self.bot_user = config["bot_user"]
+        self.bot_user = config["chatbot_user"]
         self.bot_id = config["bot_ids"][0]
         self.chat_room_id = int(config["chat_room_id"])
         self.num_users = config["num_users"]
@@ -62,15 +65,6 @@ class Chatbot:
             print("STATUS", data, flush=True)
 
             if data["type"] == "leave":
-                await self.sio.emit(
-                    "text",
-                    {
-                        "message": "user left",
-                        "room": self.chat_room_id,
-                        "html": True,
-                        "broadcast": True,
-                    },
-                )
                 self.num_users -= 1
                 if self.num_users == 0:
                     await self.sio.emit(
@@ -130,6 +124,9 @@ class Chatbot:
             # avoid ciruclar calls!
             if user_id == self.bot_user:
                 print("COMES FROM BOT, SKIP", flush=True)
+                return
+
+            if data["user"]["name"] == "Manager":
                 return
 
             room_id = data["room"]

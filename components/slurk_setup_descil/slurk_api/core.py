@@ -54,7 +54,7 @@ async def create_user(uri, api_token, name, token_id):
 
 
 async def create_room_token(
-    uri, api_token, permissions_id, room_id, task_id=None, n_users=None
+    uri, api_token, permissions_id, room_id, task_id=None, num_users=None
 ):
     json = dict(
         permissions_id=permissions_id,
@@ -62,8 +62,8 @@ async def create_room_token(
     )
     if task_id is not None:
         json["task_id"] = task_id
-    if n_users is not None:
-        json["registrations_left"] = n_users
+    if num_users is not None:
+        json["registrations_left"] = num_users
     async with post(api_token, uri + "/slurk/api/tokens", json) as r:
         r.raise_for_status()
         return (await r.json())["id"]
@@ -192,10 +192,10 @@ async def add_user_to_room(slurk_uri, token, user_id, room_id):
         return response.headers["ETag"]
 
 
-async def setup_chat_room(uri, api_token, n_users):
+async def setup_chat_room(uri, api_token, num_users):
     chat_layout_id = await create_layout(uri, api_token, CHAT_LAYOUT)
     chat_room_id = await create_room(uri, api_token, chat_layout_id)
-    chat_task_id = await create_task(uri, api_token, chat_layout_id, n_users, "Room")
+    chat_task_id = await create_task(uri, api_token, chat_layout_id, num_users, "Room")
     return chat_room_id, chat_task_id
 
 

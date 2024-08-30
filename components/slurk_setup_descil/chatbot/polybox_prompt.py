@@ -3,7 +3,7 @@ import os
 import aiohttp
 
 
-async def fetch_prompt():
+async def fetch_prompt(variant=None):
     url = os.environ.get(
         "POLYBOX_URL", "https://polybox.ethz.ch/index.php/s/MAZlGw1ZPBFYUJn/download"
     )
