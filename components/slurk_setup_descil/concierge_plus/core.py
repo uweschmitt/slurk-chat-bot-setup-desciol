@@ -6,6 +6,7 @@ import time
 import aiohttp
 import socketio
 from slurk_setup_descil.slurk_api import (
+    catch_error,
     create_forward_room,
     create_room_token,
     create_user,
@@ -57,6 +58,8 @@ class ConciergeBot:
         self.timeout_manager_active = False
         self.room_timeout_happened = False
 
+        self.redirect_users_active = False
+
         self.tasks = dict()
         self.uri = host
         if port is not None:
@@ -85,6 +88,7 @@ class ConciergeBot:
                 if task:
                     await self.user_task_leave(user, task)
 
+    @catch_error
     async def timeout_manager(self):
         started = time.time()
         while time.time() < started + self.timeout:
@@ -96,6 +100,7 @@ class ConciergeBot:
         self.room_timeout_happened = True
         await self.redirect_users_timeout()
 
+    @catch_error
     async def redirect_user(self, user_id, task_id, to_room):
         """
         for eacch user create room with layout
@@ -114,6 +119,7 @@ class ConciergeBot:
 
         print("REDIRECTED USER", flush=True)
 
+    @catch_error
     async def redirect_users_timeout(self):
         """
         for eacch user create room with layout
@@ -121,24 +127,27 @@ class ConciergeBot:
         show message
         """
 
-        for users_in_task in self.tasks.values():
-            for user_id, task_id in users_in_task.items():
-                await self.sio.emit(
-                    "text",
-                    {
-                        "message": (
-                            "## We could not fill the waiting room with sufficient number of\n"
-                            "participants you will be forwarded in a few seconds"
-                        ),
-                        "broadcast": False,
-                        "receiver_id": user_id,
-                        "room": self.waiting_room_id,
-                        "html": True,
-                    },
-                    callback=self.message_callback,
-                )
+        self.redirect_users_active = True
 
-        await asyncio.sleep(3)
+        await self.sio.emit("keypress", dict(typing=True))
+        await asyncio.sleep(2)
+        await self.sio.emit("keypress", dict(typing=False))
+
+        await self.sio.emit(
+            "text",
+            {
+                "message": (
+                    "## We could not fill the waiting room with sufficient number of\n"
+                    "participants you will be forwarded in a few seconds"
+                ),
+                "broadcast": False,
+                "room": self.waiting_room_id,
+                "html": True,
+            },
+            callback=self.message_callback,
+        )
+
+        await asyncio.sleep(2)
 
         for users_in_task in self.tasks.values():
             for user_id, task_id in users_in_task.items():
@@ -146,6 +155,7 @@ class ConciergeBot:
 
         print("REDIRECTED USERS AFTER TIMEOUT", flush=True)
 
+    @catch_error
     async def fetch_user_token(self, user_id):
         async with get(
             self.api_token, f"{self.uri}/slurk_api/users/{user_id}"
@@ -155,6 +165,7 @@ class ConciergeBot:
                 response.raise_for_status()
             return (await response.json())["token_id"]
 
+    @catch_error
     async def run(self):
         # establish a connection to the server
         await self.sio.connect(
@@ -195,6 +206,7 @@ class ConciergeBot:
             LOG.debug("Sent message successfully.")
             print("Sent message successfully.", flush=True)
 
+    @catch_error
     async def get_user_task(self, user):
         """Retrieve task assigned to user.
 
@@ -210,6 +222,7 @@ class ConciergeBot:
             LOG.debug("Got user task successfully.")
             return await response.json()
 
+    @catch_error
     async def user_task_join(self, user, task, room):
         """A connected user and their task are registered.
 
@@ -227,12 +240,8 @@ class ConciergeBot:
         """
         task_id = task["id"]
         user_id = user["id"]
-        user_name = user["name"]
         # register task together with the user_id
         self.tasks.setdefault(task_id, {})[user_id] = room
-        LOG.info(
-            f"TASK_ID {task_id}   NUM_USERS {task['num_users']}  TASKS {self.tasks}"
-        )
 
         self.num_users_in_room_missing -= 1
         if not self.timeout_manager_active:
@@ -240,53 +249,46 @@ class ConciergeBot:
             _async_tasks[id(t)] = t
             self.timeout_manager_active = True
 
-        await self.sio.emit(
-            "text",
-            {
-                "message": f"## Hello, {user_name}!\n\n"
-                + (
-                    f"### We are waiting for {self.num_users_in_room_missing} user(s) to join before we continue"
-                    if self.num_users_in_room_missing > 0
-                    else ""
-                ),
-                "receiver_id": user_id,
-                "room": room,
-                "html": True,
-            },
-            callback=self.message_callback,
-        )
-
         if self.num_users_in_room_missing > 0:
-            return
-
-        try:
-            print("SETUP ROOM", flush=True)
-            chat_room_id, _ = await setup_chat_room(
-                self.uri, self.api_token, self.num_users
-            )
-            print("REGISTER MANAGERBOT", flush=True)
-            await self.setup_and_register_managerbot(chat_room_id)
-            print("REGISTER CHATBOT", flush=True)
-            await self.setup_and_register_chatbot(chat_room_id)
-        except:
-            import traceback
-
-            traceback.print_exc()
-            raise
-
-        await asyncio.sleep(1)
-
-        for user_id, old_room_id in list(self.tasks[task_id].items()):
+            await self.sio.emit("keypress", dict(typing=True))
+            await asyncio.sleep(2)
+            await self.sio.emit("keypress", dict(typing=False))
             await self.sio.emit(
                 "text",
                 {
-                    "message": "## room complete, you will be forwarded soon",
-                    "receiver_id": user_id,
+                    "message": (
+                        f"We are waiting for {self.num_users_in_room_missing}"
+                        " user(s) to join before we continue"
+                    ),
                     "room": room,
                     "html": True,
                 },
                 callback=self.message_callback,
             )
+
+            return
+
+        print("SETUP ROOM", flush=True)
+        chat_room_id, _ = await setup_chat_room(
+            self.uri, self.api_token, self.num_users
+        )
+        print("REGISTER MANAGERBOT", flush=True)
+        await self.setup_and_register_managerbot(chat_room_id)
+        print("REGISTER CHATBOT", flush=True)
+        await self.setup_and_register_chatbot(chat_room_id)
+
+        await self.sio.emit("keypress", dict(typing=True))
+        await asyncio.sleep(2)
+        await self.sio.emit(
+            "text",
+            {
+                "message": "### room complete, you will be forwarded soon",
+                "room": room,
+                "html": True,
+            },
+            callback=self.message_callback,
+        )
+        await self.sio.emit("keypress", dict(typing=False))
         await asyncio.sleep(2)
 
         user_ids = sorted(self.tasks[task_id].keys())
@@ -296,6 +298,7 @@ class ConciergeBot:
         del self.tasks[task_id]
         await self.disconnect()
 
+    @catch_error
     async def setup_and_register_chatbot(self, chat_room_id):
         permissions = {
             "api": True,
@@ -327,6 +330,7 @@ class ConciergeBot:
             ) as r:
                 r.raise_for_status()
 
+    @catch_error
     async def setup_and_register_managerbot(self, chat_room_id):
         permissions = {
             "api": True,
@@ -358,10 +362,12 @@ class ConciergeBot:
                 r.raise_for_status()
                 print(r)
 
+    @catch_error
     async def disconnect(self):
         _async_tasks.pop(self, None)
         await self.sio.disconnect()
 
+    @catch_error
     async def user_task_leave(self, user, task):
         """The task entry of a disconnected user is removed.
 

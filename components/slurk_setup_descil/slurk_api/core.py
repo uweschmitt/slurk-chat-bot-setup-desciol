@@ -1,7 +1,21 @@
 import os
+import traceback
 from contextlib import asynccontextmanager
+from functools import wraps
 
 import aiohttp
+
+
+def catch_error(coro):
+    @wraps(coro)
+    async def wrapped(*a, **kw):
+        try:
+            return await coro(*a, **kw)
+        except:  # noqa F702
+            traceback.print_exc()
+            raise
+
+    return wrapped
 
 
 @asynccontextmanager

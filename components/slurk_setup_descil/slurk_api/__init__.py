@@ -1,4 +1,5 @@
 from slurk_setup_descil.slurk_api.core import (
+    catch_error,
     create_forward_room,
     create_layout,
     create_room,
@@ -15,6 +16,7 @@ from slurk_setup_descil.slurk_api.core import (
 )
 
 __all__ = [
+    "catch_error",
     "create_forward_room",
     "setup_chat_room",
     "create_layout",

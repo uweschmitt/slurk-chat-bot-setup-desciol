@@ -91,6 +91,7 @@ WAITING_ROOM_LAYOUT = {
         "incoming-image": "display-image",
         "submit-message": "send-message",
         "print-history": "markdown-history",
+        "typing-users": "typing-users",
     },
     "show_users": False,
     "show_latency": False,

@@ -1,28 +1,19 @@
 import asyncio
 import logging
 import time
-import traceback
-from functools import wraps
 
 import socketio
-from slurk_setup_descil.slurk_api import create_forward_room, get, redirect_user
+from slurk_setup_descil.slurk_api import (
+    catch_error,
+    create_forward_room,
+    get,
+    redirect_user,
+)
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
 _async_tasks = dict()
-
-
-def catch_error(coro):
-    @wraps(coro)
-    async def wrapped(*a, **kw):
-        try:
-            return await coro(*a, **kw)
-        except:  # noqa F702
-            traceback.print_exc()
-            raise
-
-    return wrapped
 
 
 class Managerbot:
@@ -68,7 +59,7 @@ class Managerbot:
         self.redirect_room_id = None
 
         @sio.event
-        # @catch_error
+        # @catch_error not working here!?
         async def status(data):
             print("MANAGER STATUS", data, flush=True)
             LOG.info(f"STATUS {data}")
@@ -268,6 +259,7 @@ class Managerbot:
     @catch_error
     async def disconnect(self):
         _async_tasks.pop(self, None)
+        print(flush=True)
         await self.sio.disconnect()
 
     @catch_error

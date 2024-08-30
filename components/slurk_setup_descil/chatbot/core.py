@@ -11,8 +11,9 @@ import time
 from pprint import pprint
 
 import socketio
+from slurk_setup_descil.slurk_api import catch_error
 
-from .config import TASK_GREETING, TIME_CLOSE
+from .config import TASK_GREETING
 from .interaction import generate_bot_message
 
 LOG = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ class Chatbot:
         self.players_per_room = []
         self.message_history = dict()
 
+    @catch_error
     async def run(self):
         """Establish a connection to the slurk chat server."""
         await self.sio.connect(
@@ -149,25 +151,13 @@ class Chatbot:
             print("EMITTED start_typing", flush=True)
             await self.sio.emit("keypress", dict(typing=True))
 
+            @catch_error
             async def finish_reply():
-                try:
-                    await _finish_reply()
-                except asyncio.CancelledError:
-                    print("CANCELLATIN HAPPENED", flush=True)
-                    pass
-
-            async def _finish_reply():
                 started = time.time()
                 # feed message to language model and get response
-                try:
-                    answer = await generate_bot_message(
-                        self.bot_id, self.message_history[room_id], room_id
-                    )
-                except:  # noqa
-                    import traceback  # noqa
-
-                    traceback.print_exc()
-                    raise
+                answer = await generate_bot_message(
+                    self.bot_id, self.message_history[room_id], room_id
+                )
                 if answer is None:
                     logging.debug("Not answering due to no answer!")
                     return
@@ -203,21 +193,3 @@ class Chatbot:
                 current_task.cancel()
                 print("CANCELLED")
             current_task = asyncio.create_task(finish_reply())
-
-    async def close_game(self, room_id):
-        """Erase any data structures no longer necessary."""
-        await self.sio.emit(
-            "text",
-            {
-                "message": "You will be moved out of this room "
-                f"in {TIME_CLOSE*2*60}-{TIME_CLOSE*3*60}s.",
-                "room": room_id,
-            },
-        )
-        await asyncio.sleep(2)
-        await self.sio.emit(
-            "text",
-            {"message": "Make sure to save your token before that.", "room": room_id},
-        )
-        await asyncio.sleep(TIME_CLOSE * 2 * 60)
-        await self.room_to_read_only(room_id)
