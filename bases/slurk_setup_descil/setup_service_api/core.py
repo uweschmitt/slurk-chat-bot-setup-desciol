@@ -43,7 +43,7 @@ class SetupData(BaseModel):
     waiting_room_timeout_seconds: int = 5
     chat_room_timeout_url: str = "https://sis.id.ethz.ch"
     chat_room_timeout_seconds: int = 20
-    api_token: str = "666"
+    api_token: str
 
 
 @app.post("/setup")
