@@ -24,10 +24,10 @@ bot_variants = {
     0: echo_bot,
     1: gpt_bot(1),
     2: gpt_bot(2),
-    3: gpt_bot(prompt_from_external_api.fetch_prompt),
-    4: gpt_bot(4),
-    5: gpt_bot(5),
-    6: gpt_bot(5),
+    3: gpt_bot(prompt_from_external_api.fetch_prompt(3)),
+    4: gpt_bot(prompt_from_external_api.fetch_prompt(4)),
+    5: gpt_bot(prompt_from_external_api.fetch_prompt(5)),
+    6: gpt_bot(6),
     7: gpt_bot(polybox_prompt.fetch_prompt),
 }
 
