@@ -13,7 +13,6 @@ from slurk_setup_descil.slurk_api import (
     get,
     redirect_user,
     set_permissions,
-    setup_chat_room,
 )
 
 LOG = logging.getLogger(__name__)
@@ -46,6 +45,7 @@ class ConciergeBot:
         self.concierge_token = setup["concierge_token"]
         self.concierge_user = setup["concierge_user"]
         self.waiting_room_id = setup["waiting_room_id"]
+        self.chat_room_id = setup["chat_room_id"]
         self.bot_ids = setup["bot_ids"]
         self.redirect_url = setup["waiting_room_timeout_url"]
         self.timeout = setup["waiting_room_timeout_seconds"]
@@ -268,14 +268,14 @@ class ConciergeBot:
 
             return
 
-        print("SETUP ROOM", flush=True)
-        chat_room_id, _ = await setup_chat_room(
-            self.uri, self.api_token, self.num_users
-        )
+        # print("SETUP ROOM", flush=True)
+        # chat_room_id, _ = await setup_chat_room(
+        #     self.uri, self.api_token, self.num_users
+        # )
         print("REGISTER MANAGERBOT", flush=True)
-        await self.setup_and_register_managerbot(chat_room_id)
+        await self.setup_and_register_managerbot(self.chat_room_id)
         print("REGISTER CHATBOT", flush=True)
-        await self.setup_and_register_chatbot(chat_room_id)
+        await self.setup_and_register_chatbot(self.chat_room_id)
 
         await self.sio.emit("keypress", dict(typing=True))
         await asyncio.sleep(2)
@@ -293,7 +293,7 @@ class ConciergeBot:
 
         user_ids = sorted(self.tasks[task_id].keys())
         for user_id in user_ids:
-            await self.redirect_user(user_id, task_id, chat_room_id)
+            await self.redirect_user(user_id, task_id, self.chat_room_id)
 
         del self.tasks[task_id]
         await self.disconnect()

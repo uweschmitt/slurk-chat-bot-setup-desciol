@@ -52,6 +52,13 @@ async def setup_waiting_room(uri, api_token, num_users, timeout_seconds):
     return waiting_room_id, waiting_room_task_id
 
 
+async def setup_chat_room(uri, api_token, num_users):
+    chat_layout_id = await create_layout(uri, api_token, CHAT_LAYOUT)
+    chat_room_id = await create_room(uri, api_token, chat_layout_id)
+    chat_task_id = await create_task(uri, api_token, chat_layout_id, num_users, "Room")
+    return chat_room_id, chat_task_id
+
+
 async def create_waiting_room_tokens(
     uri, api_token, waiting_room_id, task_id, num_users
 ):
@@ -62,6 +69,36 @@ async def create_waiting_room_tokens(
         )
         for _ in range(num_users)
     ]
+
+
+CHAT_LAYOUT = {
+    "title": "Room",
+    "scripts": {
+        "incoming-text": "display-text",
+        "incoming-image": "display-image",
+        "submit-message": "send-message",
+        "print-history": "plain-history",
+        "typing-users": "typing-users",
+    },
+    "html": [
+        {
+            "layout-type": "script",
+            "id": "",
+            "layout-content": """
+                 $("#text").focus();
+    """,
+        },
+    ],
+    "css": {
+        "header, footer": {"background": "#115E91"},
+        "#current-users": {"color": "#EEE!important"},
+        "#timeout-message": {"margin": "2em"},
+        "#text": {"padding-top": "0.5em!important"},
+        "#content": {"min-width": "100%!important"},
+        "#sidebar": {"display": "none"},
+    },
+    "show_latency": False,
+}
 
 
 WAITING_ROOM_LAYOUT = {

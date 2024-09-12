@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from slurk_setup_descil.setup_service import (
     create_waiting_room_tokens,
     setup_and_register_concierge,
+    setup_chat_room,
     setup_waiting_room,
 )
 from slurk_setup_descil.slurk_api import get_api_token
@@ -81,10 +82,13 @@ async def setup(setup_data: SetupData):
         slurk_url, api_token, waiting_room_id, waiting_room_task_id, num_users
     )
 
+    chat_room_id, _ = await setup_chat_room(slurk_url, api_token, num_users)
+
     request_id = uuid.uuid1().hex
 
     setup = dict(
         waiting_room_id=waiting_room_id,
+        chat_room_id=chat_room_id,
         waiting_room_timeout_seconds=waiting_room_timeout_seconds,
         waiting_room_timeout_url=waiting_room_timeout_url,
         chat_room_timeout_url=chat_room_timeout_url,
@@ -106,4 +110,5 @@ async def setup(setup_data: SetupData):
     return dict(
         user_tokens=user_tokens,
         request_id=request_id,
+        chat_room_id=chat_room_id,
     )
