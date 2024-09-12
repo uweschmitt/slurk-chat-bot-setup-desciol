@@ -52,7 +52,7 @@ services:
 
   managerbot:
     build:
-      dockerfile: ./projects/managerbot//Dockerfile
+      dockerfile: ./projects/managerbot/Dockerfile
     environment:
     - "http_proxy="
     - "https_proxy="
@@ -64,7 +64,8 @@ services:
     - "PYTHONUNBUFFERED=1"
 
   slurk:
-    image: slurk # registry.ethz.ch/sis/slurk-descil:slurk-descil
+    build:
+      context: ./projects/slurk
     entrypoint: /bin/bash
     command:
         - -c

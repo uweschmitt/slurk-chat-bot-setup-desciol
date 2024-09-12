@@ -168,8 +168,10 @@ class Chatbot:
                 print("ANSWER", answer, flush=True)
 
                 num_words = len(answer.split(" "))
-                # average 50 words per minute typing speed (is usually between 40 and 60):
-                sleep_in_seconds = num_words / 50 * 60 - needed
+                # reported human typing speed is usually between 40 and 60.
+                # this feels a bit slow during development so we assume that the
+                # chat bot is an excellent typist:
+                sleep_in_seconds = num_words / 150 * 60 - needed
                 print("WORDS", num_words, "SLEEP", sleep_in_seconds, flush=True)
                 await asyncio.sleep(sleep_in_seconds)
                 print("DONE SLEEPING", answer, flush=True)
