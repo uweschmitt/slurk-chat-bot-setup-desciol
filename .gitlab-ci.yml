@@ -25,11 +25,8 @@ build-image:
     - for df in ${dockerfiles};
       do
         (
-           cd $(dirname $df);
            project_name=$(basename $(dirname $df));
-           echo $project_name;
-           poetry build-project;
-           docker build --tag $CI_REGISTRY_IMAGE:${project_name} .;
+           docker build --tag $CI_REGISTRY_IMAGE:${project_name} -f $df .;
            docker push $CI_REGISTRY_IMAGE:${project_name};
         );
       done

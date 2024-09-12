@@ -1,10 +1,17 @@
-FROM python:3.11
-RUN apt-get update && apt-get install -y vim
+FROM python:3.11 AS build
+COPY . /repo
 
-WORKDIR /
-COPY ./dist/*.whl /
-RUN python -m venv venv
-RUN venv/bin/pip install --no-cache-dir /*.whl
+ARG PROJECT=chatbot
+
+RUN python -m venv /venv \
+    && /venv/bin/pip install --no-cache-dir poetry \
+    && /venv/bin/poetry self add poetry-multiproject-plugin \
+    && /venv/bin/poetry -C /repo/projects/${PROJECT} build-project \
+    && /venv/bin/pip install /repo/projects/${PROJECT}/dist/*.whl
+
+FROM python:3.11-slim
+
+COPY --from=build /venv /venv
 
 EXPOSE 80
 ENTRYPOINT ["/venv/bin/gunicorn",\

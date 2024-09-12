@@ -4,7 +4,7 @@ services:
   setup_service:
     image: registry.ethz.ch/sis/slurk-chat-bot-setup-descil:setup_service
     build:
-      context: ./projects/setup_service
+      dockerfile: ./projects/setup_service/Dockerfile
     ports:
     - "8789:81"
     environment:
@@ -20,7 +20,7 @@ services:
   concierge_plus:
     image: registry.ethz.ch/sis/slurk-chat-bot-setup-descil:concierge_plus
     build:
-      context: ./projects/concierge_plus/
+      dockerfile: ./projects/concierge_plus/Dockerfile
     environment:
     - "http_proxy="
     - "https_proxy="
@@ -35,7 +35,7 @@ services:
 
   chatbot:
     build:
-      context: ./projects/chatbot/
+      dockerfile: ./projects/chatbot/Dockerfile
     environment:
     - "SLURK_HOST=http://slurk"
     - "SLURK_PORT=80"
@@ -52,7 +52,7 @@ services:
 
   managerbot:
     build:
-      context: ./projects/managerbot/
+      dockerfile: ./projects/managerbot//Dockerfile
     environment:
     - "http_proxy="
     - "https_proxy="
