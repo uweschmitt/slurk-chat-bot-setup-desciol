@@ -268,14 +268,10 @@ class ConciergeBot:
 
             return
 
-        # print("SETUP ROOM", flush=True)
-        # chat_room_id, _ = await setup_chat_room(
-        #     self.uri, self.api_token, self.num_users
-        # )
         print("REGISTER MANAGERBOT", flush=True)
-        await self.setup_and_register_managerbot(self.chat_room_id)
+        await self.setup_and_register_managerbot()
         print("REGISTER CHATBOT", flush=True)
-        await self.setup_and_register_chatbot(self.chat_room_id)
+        await self.setup_and_register_chatbot()
 
         await self.sio.emit("keypress", dict(typing=True))
         await asyncio.sleep(2)
@@ -299,7 +295,7 @@ class ConciergeBot:
         await self.disconnect()
 
     @catch_error
-    async def setup_and_register_chatbot(self, chat_room_id):
+    async def setup_and_register_chatbot(self):
         permissions = {
             "api": True,
             "send_html_message": True,
@@ -309,10 +305,10 @@ class ConciergeBot:
         }
         permissions_id = await set_permissions(self.uri, self.api_token, permissions)
         bot_token = await create_room_token(
-            self.uri, self.api_token, permissions_id, chat_room_id, None, None
+            self.uri, self.api_token, permissions_id, self.chat_room_id, None, None
         )
 
-        bot_name = "ChatBot"
+        bot_name = self.setup["chatbot_name"]
 
         bot_user = await create_user(self.uri, self.api_token, bot_name, bot_token)
 
@@ -320,7 +316,7 @@ class ConciergeBot:
         setup.update(
             chatbot_user=bot_user,
             chatbot_token=bot_token,
-            chat_room_id=chat_room_id,
+            chat_room_id=self.chat_room_id,
         )
 
         async with aiohttp.ClientSession() as session:
@@ -331,7 +327,7 @@ class ConciergeBot:
                 r.raise_for_status()
 
     @catch_error
-    async def setup_and_register_managerbot(self, chat_room_id):
+    async def setup_and_register_managerbot(self):
         permissions = {
             "api": True,
             "send_html_message": True,
@@ -340,10 +336,10 @@ class ConciergeBot:
         }
         permissions_id = await set_permissions(self.uri, self.api_token, permissions)
         bot_token = await create_room_token(
-            self.uri, self.api_token, permissions_id, chat_room_id, None, None
+            self.uri, self.api_token, permissions_id, self.chat_room_id, None, None
         )
 
-        bot_name = "Manager"
+        bot_name = self.setup["chat_room_managerbot_name"]
 
         bot_user = await create_user(self.uri, self.api_token, bot_name, bot_token)
 
@@ -351,7 +347,7 @@ class ConciergeBot:
         setup.update(
             managerbot_user=bot_user,
             managerbot_token=bot_token,
-            chat_room_id=chat_room_id,
+            chat_room_id=self.chat_room_id,
         )
 
         async with aiohttp.ClientSession() as session:

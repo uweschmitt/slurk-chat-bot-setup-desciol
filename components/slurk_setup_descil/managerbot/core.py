@@ -83,7 +83,7 @@ class Managerbot:
             left = max(0, int(started + self.timeout - time.time()))
             if not self.sio.connected:
                 return
-            if left % 60 == 0:
+            if left % 20 == 0:
                 print("UPDATE MESSAGE", left, "SECONDS LEFT", flush=True)
                 await self._send_message(f"{left} seconds left", 2)
             if left == 0:

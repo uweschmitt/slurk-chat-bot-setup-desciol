@@ -13,7 +13,6 @@ async def setup_and_register_concierge(
     uri,
     concierge_url,
     setup,
-    name,
 ):
     api_token = setup["api_token"]
     permissions_id = await set_permissions(uri, api_token, CONCIERGE_PERMISSIONS)
@@ -21,7 +20,9 @@ async def setup_and_register_concierge(
         uri, api_token, permissions_id, setup["waiting_room_id"], None, None
     )
 
-    concierge_user = await create_user(uri, api_token, name, concierge_token)
+    concierge_user = await create_user(
+        uri, api_token, setup["waiting_room_conciergebot_name"], concierge_token
+    )
     setup["concierge_token"] = concierge_token
     setup["concierge_user"] = concierge_user
 
@@ -37,14 +38,6 @@ async def setup_and_register_concierge(
 async def setup_waiting_room(uri, api_token, num_users, timeout_seconds):
     waiting_room_layout_id = await create_layout(uri, api_token, WAITING_ROOM_LAYOUT)
     waiting_room_id = await create_room(uri, api_token, waiting_room_layout_id)
-    print(
-        "XXX",
-        repr(uri),
-        repr(api_token),
-        repr(waiting_room_layout_id),
-        repr(num_users),
-        flush=True,
-    )
     waiting_room_task_id = await create_task(
         uri, api_token, waiting_room_layout_id, num_users, "Waiting Room"
     )
