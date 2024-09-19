@@ -80,12 +80,18 @@ class Managerbot:
         started = time.time()
         while time.time() < started + self.timeout:
             await asyncio.sleep(1.0)
-            left = max(0, int(started + self.timeout - time.time()))
             if not self.sio.connected:
                 return
-            if left % 20 == 0:
-                print("UPDATE MESSAGE", left, "SECONDS LEFT", flush=True)
-                await self._send_message(f"{left} seconds left", 2)
+
+            left = max(0, int(started + self.timeout - time.time()))
+            await self.sio.emit(
+                "client_broadcast",
+                {
+                    "type": "time_left_chatroom",
+                    "room": self.chat_room_id,
+                    "time_left": left,
+                },
+            )
             if left == 0:
                 print("LEFT IS 0, BREAK", flush=True)
                 break

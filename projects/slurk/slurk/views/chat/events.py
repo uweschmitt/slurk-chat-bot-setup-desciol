@@ -34,6 +34,11 @@ def room_created(payload):
 
 
 @socketio.event
+def client_broadcast(payload):
+    socketio.emit("client_broadcast", payload)
+
+
+@socketio.event
 def bounding_box(payload):
     if "room" not in payload:
         return False, 'missing argument: "room"'
