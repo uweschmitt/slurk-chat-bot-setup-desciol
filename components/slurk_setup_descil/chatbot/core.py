@@ -8,7 +8,6 @@ import logging
 import os
 import random
 import time
-from pprint import pprint
 
 import socketio
 from slurk_setup_descil.slurk_api import catch_error
@@ -29,8 +28,9 @@ class Chatbot:
         :param task: Task ID
         :type task: str
         """
-        pprint(config)
-        print(flush=True)
+
+        self.config = config
+        self.manager_bot_id = config["manager_bot_id"]
         self.bot_token = config["chatbot_token"]
         self.api_token = config["api_token"]
         self.bot_user = config["chatbot_user"]
@@ -128,7 +128,8 @@ class Chatbot:
                 print("COMES FROM BOT, SKIP", flush=True)
                 return
 
-            if data["user"]["name"] == "Manager":
+            if data["user"]["id"] == self.manager_bot_id:
+                print("INGORE THE MANAGER")
                 return
 
             room_id = data["room"]

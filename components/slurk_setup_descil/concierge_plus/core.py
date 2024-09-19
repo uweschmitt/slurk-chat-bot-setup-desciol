@@ -268,10 +268,8 @@ class ConciergeBot:
 
             return
 
-        print("REGISTER MANAGERBOT", flush=True)
-        await self.setup_and_register_managerbot()
-        print("REGISTER CHATBOT", flush=True)
-        await self.setup_and_register_chatbot()
+        managerbot_id = await self.setup_and_register_managerbot()
+        await self.setup_and_register_chatbot(managerbot_id)
 
         await self.sio.emit("keypress", dict(typing=True))
         await asyncio.sleep(2)
@@ -295,7 +293,7 @@ class ConciergeBot:
         await self.disconnect()
 
     @catch_error
-    async def setup_and_register_chatbot(self):
+    async def setup_and_register_chatbot(self, manager_bot_id):
         permissions = {
             "api": True,
             "send_html_message": True,
@@ -317,6 +315,7 @@ class ConciergeBot:
             chatbot_user=bot_user,
             chatbot_token=bot_token,
             chat_room_id=self.chat_room_id,
+            manager_bot_id=manager_bot_id,
         )
 
         async with aiohttp.ClientSession() as session:
@@ -357,6 +356,8 @@ class ConciergeBot:
             ) as r:
                 r.raise_for_status()
                 print(r)
+
+        return bot_user
 
     @catch_error
     async def disconnect(self):
