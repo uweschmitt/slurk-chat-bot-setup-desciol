@@ -79,7 +79,9 @@ class ConciergeBot:
                 user = data["user"]
                 task = await self.get_user_task(user)
                 if self.room_timeout_happened:
-                    await self.redirect_user(user["id"], self.redirect_room_id)
+                    await self.redirect_user(
+                        user["id"], task["id"], self.redirect_room_id
+                    )
                 if task:
                     await self.user_task_join(user, task, data["room"])
             elif data["type"] == "leave":
