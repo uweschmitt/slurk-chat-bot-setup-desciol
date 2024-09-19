@@ -1,10 +1,13 @@
 version: '3.4'
 
 services:
+
+
   setup_service:
     image: registry.ethz.ch/sis/slurk-chat-bot-setup-descil:setup_service
     build:
       dockerfile: ./projects/setup_service/Dockerfile
+    pull_policy: 'missing'
     ports:
     - "8789:81"
     environment:
@@ -21,6 +24,7 @@ services:
     image: registry.ethz.ch/sis/slurk-chat-bot-setup-descil:concierge_plus
     build:
       dockerfile: ./projects/concierge_plus/Dockerfile
+    pull_policy: 'missing'
     environment:
     - "http_proxy="
     - "https_proxy="
@@ -36,6 +40,7 @@ services:
   chatbot:
     build:
       dockerfile: ./projects/chatbot/Dockerfile
+    pull_policy: 'missing'
     environment:
     - "SLURK_HOST=http://slurk"
     - "SLURK_PORT=80"
@@ -53,6 +58,7 @@ services:
   managerbot:
     build:
       dockerfile: ./projects/managerbot/Dockerfile
+    pull_policy: 'missing'
     environment:
     - "http_proxy="
     - "https_proxy="
@@ -66,6 +72,7 @@ services:
   slurk:
     build:
       context: ./projects/slurk
+    pull_policy: 'missing'
     entrypoint: /bin/bash
     command:
         - -c
