@@ -6,7 +6,7 @@ from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime
 from functools import partial
 
-from openai import AsyncAzureOpenAI
+from openai import AsyncAzureOpenAI, AsyncOpenAI
 
 from .prompti import prompts
 
@@ -15,13 +15,31 @@ client = None
 
 def connect():
     global client
-    if client is None:
+    if client is not None:
+        return client
+    if use_azure_openai():
         client = AsyncAzureOpenAI(
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             api_version=os.getenv("AZURE_OPENAI_API_VERSION"),
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
         )
+    else:
+        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     return client
+
+
+def use_azure_openai():
+    return os.getenv("AI_PROVIDER").upper().strip() == "AZURE"
+
+
+def get_ai_parameters():
+    if use_azure_openai():
+        model = os.getenv("AZURE_OPENAI_MODEL", "css-openai-gpt35")
+    else:
+        model = os.getenv("OPENAI_MODEL", "gtp-3.5-turbo-1106")
+    temperature = float(os.getenv("AI_MODEL_TEMPERATURE", "0.9"))
+    max_tokens = int(os.getenv("AI_MODEL_MAX_TOKENS", "80"))
+    return model, temperature, max_tokens
 
 
 def gpt_bot(variant):
@@ -79,9 +97,7 @@ async def _gpt_bot(past_messages, room_number, variant):
         "Speak only English.",
     }
 
-    model = os.environ.get("AZURE_OPENAI_MODEL", "css-openai-gpt35")
-    temperature = float(os.environ.get("AZURE_OPENAI_MODEL_TEMPERATURE", "0.9"))
-    max_tokens = int(os.environ.get("AZURE_OPENAI_MODEL_MAX_TOKENS", "80"))
+    model, temperature, max_tokens = get_ai_parameters()
 
     client = connect()
 
